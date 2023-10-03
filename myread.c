@@ -7,13 +7,16 @@
 #include <string.h>
 #include "myio.h"
 
-#define BUFFER_SIZE 4096
+struct fileInfo *file;
 
 ssize_t myread(int fildes, void *buf, size_t nbyte){
     //check read permissions based on flags
     // want to ask for more than is passed(the user want) requires 
     // will fail if the parameter nbyte exceeds INT_MAX, and they do not attempt a partial read.
-    extern int errno;
+    // extern int errno;
+    // Check if there's any data available in the buffer (buf) starting from the current position (buf_pos).
+    // If there is data in the buffer, read from the buffer starting at the current position and update buffer position accordingly.
+    // If the buffer is empty or there isn't enough data to satisfy the read request, you may need to refill the buffer by reading from the file.
     ssize_t bytesRead;
 
     if((bytesRead = read(fildes, buf, nbyte))==-1){
