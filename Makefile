@@ -3,7 +3,7 @@ CFLAGS = -Wall -pedantic
 .PHONY: all
 all: main
 
-main: main.o myio.o myopen.o myread.o myseek.o
+main: main.o myio.o
 	gcc -o $@ $^
 
 %.o: %.c
@@ -11,4 +11,4 @@ main: main.o myio.o myopen.o myread.o myseek.o
 
 .PHONY: clean
 clean:
-	rm -f main main.o myio.o myopen.o myread.o myseek.o
+	rm -f main main.o myio.o 
