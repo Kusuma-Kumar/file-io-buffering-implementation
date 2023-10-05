@@ -13,7 +13,7 @@
 #include <limits.h>
 #include "myio.h"
 
-#define BUFFER_SIZE 8
+#define bufSize 8
 
 /*
  * myopen
@@ -49,28 +49,32 @@ MYFILE *myopen(const char* pathname, int flags) {
 
 // call syscall read
 ssize_t myread(MYFILE *file, void *buf, size_t nbyte){
+    extern int errno;
+    ssize_t bytesRead;
     //check read permissions based on flags
+    if(file->flags!=O_RDONLY || file->flags!=O_RDWR){
+        return NULL;
+    }
     // want to ask for more than is passed(the user want) requires 
     // will fail if the parameter nbyte exceeds INT_MAX, and they do not attempt a partial read.
-    // extern int errno;
     // Check if there's any data available in the buffer (buf) starting from the current position (buf_pos).
     // If there is data in the buffer, read from the buffer starting at the current position and update buffer position accordingly.
     // If the buffer is empty or there isn't enough data to satisfy the read request, you may need to refill the buffer by reading from the file.
-    ssize_t bytesRead;
+    // call read and fill the buffer only when it is the first time using read or you just flushed read 
+    // also call read directly without buffer if bytes requested> buffer size
 
-    if((bytesRead = read(fildes, buf, nbyte))==-1){
+    if((bytesRead = read(file->fd, file->buf, bufSize))==-1){
         perror("read");
     }
-
-    // only requested amount should go into users buffer(from readBuff into buf)
-    memcpy(buf,bytesRead,nbyte);
-    file->userPointer
-    remainderBuf
+    // only requested amount should go into users buffer
+    memcpy(buf,file->buf,nbyte);
+    //Upon return from read(), the pointer is incremented by the number of bytes actually read.
+    //Upon return from read(), the pointer in the struct buf is also increased to keep track of how much we have remaining
+    file->userPointer=file->userPointer+bytesRead;
+    file->bufPosition=file->bufPosition+bytesRead;
 
     // do i call flush?
     // combine info based on if I have info on buffer instead of calling function again
-
-    //Upon return from read(), the pointer is incremented by the number of bytes actually read.
     return bytesRead;
 }
 
