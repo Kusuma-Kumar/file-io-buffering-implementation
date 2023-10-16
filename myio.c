@@ -47,7 +47,6 @@ MYFILE *myopen(const char* pathname, int flags) {
     // Initialize other fields included in struct
     file->flags = flags;
     file->bufSize = bufferSize;
-    file->offset = 0;
     file->bufPosition = 0;
     file->userPointer = 0;
     file->lastOperationWrite = 0;
@@ -115,7 +114,7 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte){
                 return -1;
             }
             //only copy the few overflowing bytes
-            memcpy(readBuf + firstCopySize, file->buf, (file->bufPosition + nbyte) - file->bufSize);
+            memcpy((char *)readBuf + firstCopySize, file->buf, (file->bufPosition + nbyte) - file->bufSize);
             file->bufPosition = (file->bufPosition + nbyte) - file->bufSize;
             file->userPointer += nbyte;
         }else{
@@ -146,28 +145,40 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte){
 ssize_t myseek(MYFILE *file, off_t offset, int whence){
     off_t result;
     int newOffset;
+    
     if (file == NULL) {
         return -1;
     }
+    if (offset < 0) {
+        printf("Cannot have -ve offset");
+        return -1;
+    }
 
-    if (whence == SEEK_SET) {
-        newOffset=file->userPointer+offset;
-    }else if (whence == SEEK_CUR) {
-        newOffset=offset;
+    if (whence == SEEK_CUR) {
+        newOffset = file->userPointer + offset;
+    }else if (whence == SEEK_SET) {
+        newOffset = offset;
     }else{
         printf("%s\n", "Not a valid whence value");
         return -1;
     }
-    //flush the buffer before seeking to prevent read and write data getting mixed by changing offset location and rereading/rewriting data
-    //flush()
-    if ((result = lseek(file->fd, newOffset, whence)) == -1) {
+
+    // flush the buffer/reset file->buf before seeking to prevent read and write data getting mixed by changing offset location and rereading/rewriting data
+    if(file->lastOperationRead == 1){
+        file->lastOperationRead = 0;
+        file->bufPosition = 0;
+    }
+    if(file->lastOperationWrite == 1){
+        file->lastOperationWrite = 0;
+        // call myflush 
+    }
+
+    if ((result = lseek(file->fd, newOffset, SEEK_SET)) == -1) {
         perror("lseek");
         return -1;
     }
-    file->userPointer=result;
-    file->offset = result;
-    file->bufPosition = 0;
-    //update allpointer like user po
+
+    file->userPointer = result;
     return result;
 }
 // in mywrite if last instruction was myread - then call lseek, offset should be beginning of file
