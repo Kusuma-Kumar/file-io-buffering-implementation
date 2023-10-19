@@ -4,7 +4,7 @@ CFLAGS = -Wall -pedantic
 all: myio.o
 
 %.o: %.c
-	gcc $(CFLAGS) -c -o $@ $^
+	gcc -g $(CFLAGS) -c -o $@ $^
 
 .PHONY: clean
 clean:

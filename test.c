@@ -8,6 +8,7 @@ int main() {
     MYFILE *file1;
     MYFILE *file2;
     MYFILE *file3;
+    MYFILE *file4;
     ssize_t bytesRead;
     int bytesRequested;
     off_t newOffset;
@@ -62,11 +63,17 @@ int main() {
     printf("Read file2: %.*s\n", bytesRequested, buffer);
 
 
-    if ((file3 = myopen("sample2.txt", O_CREAT | O_WRONLY | O_TRUNC)) == NULL) {
+    if ((file3 = myopen("sample.txt", O_CREAT | O_WRONLY | O_TRUNC)) == NULL) {
         perror("myopen");
         return 1;
     }
+    printf("sample file was created\n");
 
+    // if ((file4 = myopen("file1.txt", O_RDONLY | O_TRUNC)) == NULL) {
+    //     perror("myopen");
+    //     return 1;
+    // }
+    // printf("O_RDONLY \t O_TRUNC\n");
     
 
     return 0;
