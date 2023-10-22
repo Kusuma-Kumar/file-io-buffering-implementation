@@ -16,7 +16,6 @@
 
 #define bufferSize 8
 
-
 /*
  * myopen
  */
@@ -193,34 +192,18 @@ ssize_t myseek(MYFILE *file, off_t offset, int whence){
 
 
 ssize_t mywrite(MYFILE *stream, const void *streamBuf, size_t Count){
-    /* check if buffer is full and then flush */
-    //calculates num of bytes from what is already there
-    if(stream->bufSize <= stream->Count + Count){
-        //stdout? 
-       myflush(stream);
-    }
-
-
-    if(stream->bufSize >= stream->Count + Count){
-        memcpy(stream->buf + stream->Count, streamBuf, Count);
-        stream->Count += Count; /* update the new count of bytes in the buffer */
-        return Count; /* return number of bytes written */
-    }
-    
-
-    /* The case if my write overwrites mywrite */
-    if(Count > stream->bufSize){
-        write(stream->fd, stream->buf, Count);
-        return Count;
-    }
-
-
-    /*the case if O_READ is not on */
-    if((stream->flags & O_RDONLY) < 0){
-        printf("O_RDONLY flag not set");
+    /* ADDED TODAY check null cases */
+    if((stream == NULL || streamBuf == NULL)){
+        printf("Stream is NULL");
         return -1;
     }
 
+
+    /* ADDED TODAY the case if O_READ is on, user should not be able to write */
+    if((stream->flags & O_RDONLY) != 0){
+        printf("Cannot write in read-only mode");
+        return -1;
+    }
 
     /* case if O_WRITE is not on */
     if((stream->flags & O_WRONLY) < 0){
@@ -228,7 +211,31 @@ ssize_t mywrite(MYFILE *stream, const void *streamBuf, size_t Count){
         return -1;
     }
 
+    /* check if buffer is full and then flush if needed */
+    if(stream->bufSize <= stream->Count + Count){
+        myflush(stream);
+    }
 
+
+    /* Check if the buffer can fit the count user specifies */
+    if(stream->bufSize >= stream->Count + Count){
+        memcpy(stream->buf + stream->Count, streamBuf, Count);
+        stream->Count += Count; /* update the new count of bytes in the buffer */
+        return Count; /* return number of bytes written */
+    }
+    
+
+    /* If count exceeds buffer size then we should call write */
+    if(Count > stream->bufSize){
+        write(stream->fd, stream->buf, Count);
+        return Count;
+    }
+
+
+    /* ADDED TODAY case if the buffer overflows, we should flush first and then write */
+    if(Count >= stream->bufSize){
+        myflush(stream);
+    }
 
     return Count;
 }
@@ -239,23 +246,34 @@ int myflush(MYFILE *stream){
     if(stream == NULL){
         printf("stream is not defined");
     }
-    else 
-    {
-        if(write(stream->fd, stream->buf, stream->Count) == -1){
-            return -1;
+    
+    if(write(stream->fd, stream->buf, stream->Count) == -1){
+        perror("write");
+        return -1;
         }
         return 0;
     }
-    return 0;
-}
 
 
-//close our file 
+/* close user file */
 int myclose(MYFILE *stream){
+    if(stream == NULL){
+        printf("stream is not defined");
+        return -1;
+    }
+
+    /* close file descriptor */
     if(close(stream->fd) == -1){
         perror("close");
         return -1; 
     }
-    free(stream->buf);
+
+    /* deallocate memory in buffer */
+    if(stream->buf != NULL){
+        free(stream->buf);
+    }
+
+    /* deallocate memory in file */
+    free(stream);
     return 0;
 }
