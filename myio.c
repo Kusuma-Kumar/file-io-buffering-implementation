@@ -84,7 +84,7 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte){
         return -1;
     }
     if(file->lastOperationWrite == 1){
-        //call my flush
+        myflush(file);
         file->lastOperationWrite = 0;
     }
     // Check if the user is requesting more bytes than the struct buf size,
@@ -176,7 +176,7 @@ ssize_t myseek(MYFILE *file, off_t offset, int whence){
     }
     if(file->lastOperationWrite == 1){
         file->lastOperationWrite = 0;
-        // call myflush 
+        myflush(file);
     }
 
     if ((result = lseek(file->fd, newOffset, SEEK_SET)) == -1) {
