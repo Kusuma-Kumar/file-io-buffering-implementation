@@ -14,11 +14,10 @@ int main() {
     off_t newOffset;
 
     // Test myopen
-    if((file1 = myopen("file1.txt", O_RDONLY)) == NULL){
+    if((file1 = myopen("file1.txt", O_RDONLY)) == NULL) {
         perror("myopen");
         return 1;
     }
-
 
     // Test myread
     char buffer[12];
@@ -27,10 +26,12 @@ int main() {
     bytesRead = myread(file1, buffer, bytesRequested);
     printf("Read file1: %.*s\n", bytesRequested, buffer);
 
+
     bytesRequested = 7;
     bytesRead = myread(file1, buffer, bytesRequested);
     printf("Read file1: %.*s\n", bytesRequested, buffer);
     
+
     bytesRequested = 15;
     bytesRead = myread(file1, buffer, bytesRequested);
     printf("Read file1: %.*s\n", bytesRequested, buffer);
@@ -47,7 +48,7 @@ int main() {
 
    
     // test myopen and myread on different files
-    if((file2 = myopen("file2.txt", O_RDONLY)) == NULL){
+    if((file2 = myopen("file2.txt", O_RDONLY)) == NULL) {
         perror("myopen");
         return 1;
     }
@@ -77,23 +78,25 @@ int main() {
     }
     printf("sample file was created\n");
 
-    if((file4 = myopen("file1.txt", O_RDONLY | O_TRUNC)) == NULL){
+
+    if((file4 = myopen("file1.txt", O_RDONLY | O_TRUNC)) == NULL) {
          perror("myopen");
          return 1;
      }
      printf("O_RDONLY \t O_TRUNC\n");
 
 
-    // Testing all the cases in mywrite 
+    // MIRIAM Testing all the cases in mywrite 
     MYFILE *file;
     ssize_t bytesWritten;
 
-    if((file = myopen("file1.txt", O_WRONLY | O_TRUNC)) == NULL) {
+    //char buffer[10];
+
+    if((file = myopen("file1.txt",O_CREAT | O_WRONLY | O_TRUNC)) == NULL) {
         perror("myopen");
         return 1;
     }
 
-    // every time I tested a case I just inserted the chunk of code below 
 
     // Test valid write 
     char data1[] = "This write has succeeded.";
@@ -107,32 +110,41 @@ int main() {
     printf("Buffer overflow: %zd bytes written\n", bytesWritten);
 
 
+    // Test When total bytes written is less than bufferSize
+    // THIS IS THE NEWEST THING I ADDED IN TERMS OF TESTING 
+    char smallerData[] = "small";
+    bytesWritten = mywrite(file, smallerData, sizeof(smallerData));
+    printf("Test case: Total bytes written is less than buffer size. Bytes written: %zd\n", bytesWritten);
+
+
     // Test null stream 
     char data2[] = "Null stream test.\n";
     bytesWritten = mywrite(NULL, data2, strlen(data2));
-    printf("\nNull stream: %zd bytes written\n", bytesWritten);
+    printf("Null stream: %zd bytes written\n", bytesWritten);
 
 
-     // Test O_WRONLY flag not set 
-    MYFILE *noWriteFlagFile = myopen("noWriteFlag.txt", O_RDONLY);
-    char data[] = "O_WRONLY flag not set test.";
+    // Test O_WRONLY flag not set 
+    MYFILE *noWriteFlagFile = myopen("noWriteFlag.txt", O_CREAT | O_RDONLY | O_TRUNC);
+    char data[] = "O_WRONLY flag not set test.\n";
     bytesWritten = mywrite(noWriteFlagFile, data, strlen(data));
     printf("O_WRONLY flag not set: %zd bytes written\n", bytesWritten);
 
 
     // Test readOnly mode 
-    MYFILE *readOnlyFile = myopen("readOnly.txt", O_RDONLY);
+    MYFILE *readOnlyFile = myopen("readOnly.txt", O_CREAT | O_WRONLY | O_TRUNC | O_RDONLY);
     char data3[] = "Read-only mode test.";
     bytesWritten = mywrite(readOnlyFile, data, strlen(data));
     printf("Read-only mode: %zd bytes written\n", bytesWritten);
 
 
     // Test closing readOnly
-    if(myclose(readOnlyFile) == -1){
+    if(myclose(readOnlyFile) == -1) {
         perror("myclose");
         return 1;
     }
-    if(myclose(noWriteFlagFile) == -1){
+
+
+    if(myclose(noWriteFlagFile) == -1) {
         perror("myclose");
         return 1;
     }
@@ -157,13 +169,16 @@ int main() {
     int bytesRequested2;
     char buffer1[8];
 
+
     char largeData2[] = "For writers looking for an easy way to inspire creativity, they don't need to look any further.";
     bytesWritten = mywrite(file, largeData, sizeof(largeData));
     printf("Buffer overflow with flush: %zd bytes written\n", bytesWritten);
 
+
     // Test moving bufPos to the beginning of the file
-    myread(file, buffer, 5);  
+    myread(file, buffer1, 5);  
     myseek(file, 0, SEEK_SET); 
+    
     
     // Test write after moving bufPos
     char newData[] = "New data written to the beginning.";
@@ -172,7 +187,7 @@ int main() {
 
 
     // Close the files 
-    if(myclose(file) == -1){
+    if(myclose(file) == -1) {
         perror("myclose");
         return 1;
     }
@@ -181,7 +196,7 @@ int main() {
 
     // I used the following to test myclose and myflush
     // Test myopen 
-    if((file1 = myopen("file1.txt", O_WRONLY | O_TRUNC)) == NULL){
+    if((file1 = myopen("file1.txt", O_WRONLY | O_TRUNC)) == NULL) {
         perror("myopen");
         return 1;
     }
@@ -189,7 +204,7 @@ int main() {
     // Test mywrite 
     char data4[] = "blahhhh";
 
-    if(mywrite(file1, data, strlen(data)) == -1){
+    if(mywrite(file1, data, strlen(data)) == -1) {
         perror("mywrite");
         return 1;
     }
@@ -198,13 +213,14 @@ int main() {
     printf("Before myflush.\n");
 
     // Test myflush 
-    if(myflush(file1) == -1){
+    if(myflush(file1) == -1) {
         perror("myflush");
         return 1;
     } else {
         // Print a success message after flushing 
         printf("myflush is successful!\n");
     }
+
 }
 
     

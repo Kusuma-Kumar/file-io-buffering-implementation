@@ -4,7 +4,7 @@
 #include <sys/types.h>  // Include the necessary header for ssize_t and size_t for myread function
 
 typedef struct fileInfo {
-    int Count;
+    int count;
     int fd;
     int flags;
     char* buf; // Start of buffer reserve area for buffer.
