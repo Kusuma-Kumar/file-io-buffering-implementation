@@ -2,7 +2,6 @@
  * myio.c
  */
 
-// implement written file functions/ call them 
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -20,8 +19,7 @@
  * myopen
  */
 
-// call system call open, malloc space for buffer , check errors
-MYFILE *myopen(const char* pathname, int flags) {
+MYFILE *myopen(const char *pathname, int flags) {
     MYFILE *file;
     if ((file = (MYFILE *)malloc(sizeof(MYFILE))) == NULL) {
         perror("malloc");
@@ -31,27 +29,32 @@ MYFILE *myopen(const char* pathname, int flags) {
     int validFlags = O_CREAT | O_WRONLY | O_RDONLY | O_RDWR | O_TRUNC;
     if ((flags & validFlags) != flags) {
         printf("%s\n", "Not a valid flag");
+        free(file);
         return NULL;
     }
 
     //assume a mode of 0666
     if ((file->fd = open(pathname, flags, 0666)) == -1) {
         perror("open");
+        free(file);
         return NULL;
     }
 
     if ((file->buf = malloc(BUFFER_SIZE)) == NULL) {
         perror("malloc");
+        close(file->fd); // the file descriptor can no longer be used as it is not longer valid 
+        free(file);
         return NULL;
     }
 
-    // Initialize other fields included in struct
+    // Initialize other fields included in struct that will be used in the future for all out other functions too
     file->flags = flags;
     file->bufSize = BUFFER_SIZE;
     file->bufPosition = 0;
     file->userPointer = 0;
     file->lastOperationWrite = 0;
     file->lastOperationRead = 0;
+    file->count = 0; // ask Miriam
     
     return file;
 }
@@ -62,31 +65,31 @@ MYFILE *myopen(const char* pathname, int flags) {
  * myread
  */
 
-// call syscall read
 ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
 
     ssize_t bytesRead = 0;
     off_t result;
-    if (file == NULL || readBuf == NULL) {
-        printf("%s\n", "file or readBuf is not declared/null value");
-        return -1;
-    }
+
     //check read permissions based on flags
     if (file->flags != O_RDONLY && file->flags != O_RDWR) {
         printf("%s\n", "Not a valid read flag");
         return -1;
     }
+
     if (nbyte == 0) {
         return 0;
     }
+
     if (nbyte < 0) {
         printf("%s\n", "Cannot read -ve number of bytes");
         return -1;
     }
+
     if(file->lastOperationWrite == 1) {
         myflush(file);
         file->lastOperationWrite = 0;
     }
+
     // Check if the user is requesting more bytes than the struct buf size,
     // then there is no point of our buffer, call syscall read directly
     if (nbyte >= file->bufSize) {
@@ -97,18 +100,24 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
             }
             file->userPointer = result;
         }
-        // maybe put this in a while loop, if nbyte > size of readBuf it will only give us size of readBuf bytes
+
+        // if nbyte > size of readBuf it will only give us size of readBuf bytes, user's mistake for requesting more than their readBuf can actually handle
         if ((bytesRead = read(file->fd, readBuf, nbyte)) == -1) {
             perror("read");
             return -1;
         }
+
         // printf("bytes read directly %d\n", bytesRead);
+        
         //reset the buffer
         file->bufPosition = 0;
         file->userPointer += bytesRead;
+    
     } else if(file->bufPosition <= file->bufSize) {
+        
         //check if there is still room in buffer for the users request
         if(file->bufPosition + nbyte >= file->bufSize){
+            
             //but the user has also requested more bytes which overflows the buf
             //so call syscall read to fill the buffer again and continue with overflow
             int firstCopySize = file->bufSize - file->bufPosition;
@@ -121,21 +130,24 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
             memcpy((char *)readBuf + firstCopySize, file->buf, (file->bufPosition + nbyte) - file->bufSize);
             file->bufPosition = (file->bufPosition + nbyte) - file->bufSize;
             file->userPointer += nbyte;
+        
         }else{
+            
             if(file->bufPosition == 0){
+                // On the first read call do a syscall to fill the entire buf. On subsequent read call get them information 
+                // stored in out Buf until it cannot any longer
                 if ((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
                     perror("read");
                     return -1;
                 }
             }
-            // Copy data into readBuf
+            
+            // Copy only requested bytes of data from file->buf into readBuf
             memcpy(readBuf, file->buf + file->bufPosition, nbyte);
             file->userPointer += nbyte;
             file->bufPosition += nbyte;
         }
     }
-    //if bufposition is zero fill the buffer
-    // will fail if the parameter nbyte exceeds INT_MAX, and they do not attempt a partial read.
 
     file->lastOperationRead=1;
     return bytesRead;
@@ -152,9 +164,6 @@ ssize_t myseek(MYFILE *file, off_t offset, int whence) {
     off_t result;
     int newOffset;
     
-    if (file == NULL) {
-        return -1;
-    }
     if (offset < 0) {
         printf("Cannot have -ve offset");
         return -1;
@@ -194,69 +203,75 @@ ssize_t myseek(MYFILE *file, off_t offset, int whence) {
  * mywrite
  */
 
-ssize_t mywrite(MYFILE *stream, const void *streamBuf, size_t Count) {
+ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t Count) {
 
     // check the null cases
-    if((stream == NULL || streamBuf == NULL)) {
-        printf("Stream is NULL\n");
+    if((file == NULL || fileBuf == NULL)) {
+        printf("file is NULL\n");
         return -1;
     }
     
     // check the case if O_READ is on, user should not be able to write 
-    if((stream->flags & O_RDONLY) == 0) {
+    if((file->flags & O_RDONLY) == 0) {
         printf("Cannot write in read-only mode");
         return -1;
     }
 
     // case if O_WRITE is not on 
-    if((stream->flags & O_WRONLY) == 0) {
+    if((file->flags & O_WRONLY) == 0) {
         printf("O_WRONLY flag not set");
         return -1;
     }
 
     // check if buffer is full and then flush if needed 
-    if(stream->bufSize <= stream->count + Count) {
-        myflush(stream);
+    if(file->bufSize <= file->count + Count) {
+        myflush(file);
     }
 
     // Check if the buffer can fit the count user specifies 
-    if(stream->bufSize >= stream->count + Count) {
-        memcpy(stream->buf + stream->count, streamBuf, Count);
-        stream->count += Count; // update the new count of bytes in the buffer 
+    if(file->bufSize >= file->count + Count) {
+        memcpy(file->buf + file->count, fileBuf, Count);
+        file->count += Count; // update the new count of bytes in the buffer 
         return Count; // return number of bytes written 
     }
     
     // If count exceeds buffer size then we should call write 
-    if(Count > stream->bufSize) {
-        write(stream->fd, stream->buf, Count);
+    if(Count > file->bufSize) {
+        write(file->fd, file->buf, Count);
         return Count;
     }
 
     // Case if the buffer overflows, we should flush first and then write 
-    if(Count >= stream->bufSize) {
-        myflush(stream);
+    if(Count >= file->bufSize) {
+        myflush(file);
     }
 
    // The case if the last user instruction was myread, the bufPos should move to the beggining of the file
-    if(stream->lastOperationWrite == 1) {
-        myflush(stream);
-        stream->lastOperationWrite = 0;
+    // if(file->lastOperationWrite == 1) {
+    //     myflush(file);
+    //     file->lastOperationWrite = 0;
+    // }
+    // Miriam: I am fixing this if condition as it relates to myRead, i think this is where you were rewriting your write data in the if right above here
+
+    if(file->lastOperationRead == 1) {
+        file->lastOperationRead = 0;
+        file->bufPosition = 0;
     }
 
     //The case if total bytes written is less than buffersize
-    if(Count < stream->bufSize) {
-        size_t remainingSpace = stream->bufSize - stream->count;
+    if(Count < file->bufSize) {
+        size_t remainingSpace = file->bufSize - file->count;
         // check if there is enough space in the buffer 
         if(remainingSpace >= Count){
-            memcpy(stream->buf + stream->count, streamBuf, Count);
-            stream->count += Count;
+            memcpy(file->buf + file->count, fileBuf, Count);
+            file->count += Count;
         }
         else
         {
             // flush buffer to the file and write 
-            myflush(stream);
-            memcpy(stream->buf + stream->count, streamBuf, Count);
-            stream->count += Count;
+            myflush(file);
+            memcpy(file->buf + file->count, fileBuf, Count);
+            file->count += Count;
         }
         return Count;
     }
@@ -269,13 +284,13 @@ ssize_t mywrite(MYFILE *stream, const void *streamBuf, size_t Count) {
  * myflush
  */
 
-// flush forces a write out of all user-space buffered data, for given output stream 
-int myflush(MYFILE *stream) {
-    if(stream == NULL) {
-        printf("stream is not defined");
+// flush forces a write out of all user-space buffered data, for given output file 
+int myflush(MYFILE *file) {
+    if(file == NULL) {
+        printf("file is not defined");
     }
 
-    if(write(stream->fd, stream->buf, stream->count)== -1) {
+    if(write(file->fd, file->buf, file->count)== -1) {
         perror("write");
         return -1;
     }
@@ -289,24 +304,24 @@ int myflush(MYFILE *stream) {
  */
 
 // close file 
-int myclose(MYFILE *stream) {
-    if(stream == NULL) {
-        printf("stream is not defined");
+int myclose(MYFILE *file) {
+    if(file == NULL) {
+        printf("file is not defined");
         return -1;
     }
 
     // close file descriptor 
-    if(close(stream->fd) == -1) {
+    if(close(file->fd) == -1) {
         perror("close");
         return -1; 
     }
 
     // deallocate memory in buffer 
-    if(stream->buf != NULL) {
-        free(stream->buf);
+    if(file->buf != NULL) {
+        free(file->buf);
     }
 
     // deallocate memory in file 
-    free(stream);
+    free(file);
     return 0;
 }

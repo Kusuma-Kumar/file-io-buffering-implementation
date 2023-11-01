@@ -78,15 +78,14 @@ int main() {
     }
     printf("sample file was created\n");
 
+    // commenting this test out as it empties file contents to zero
+    // if((file4 = myopen("file1.txt", O_RDONLY | O_TRUNC)) == NULL) {
+    //     perror("myopen");
+    //     return 1;
+    // }
 
-    if((file4 = myopen("file1.txt", O_RDONLY | O_TRUNC)) == NULL) {
-         perror("myopen");
-         return 1;
-     }
-     printf("O_RDONLY \t O_TRUNC\n");
 
-
-    // MIRIAM Testing all the cases in mywrite 
+    // // MIRIAM Testing all the cases in mywrite 
     MYFILE *file;
     ssize_t bytesWritten;
 
@@ -117,10 +116,10 @@ int main() {
     printf("Test case: Total bytes written is less than buffer size. Bytes written: %zd\n", bytesWritten);
 
 
-    // Test null stream 
-    char data2[] = "Null stream test.\n";
+    // Test null file 
+    char data2[] = "Null file test.\n";
     bytesWritten = mywrite(NULL, data2, strlen(data2));
-    printf("Null stream: %zd bytes written\n", bytesWritten);
+    printf("Null file: %zd bytes written\n", bytesWritten);
 
 
     // Test O_WRONLY flag not set 
