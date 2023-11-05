@@ -86,7 +86,8 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
     }
 
     if(file->lastOperationWrite == 1) {
-        myflush(file);
+        myflush(file); 
+        file->bufPosition = 0;
         file->lastOperationWrite = 0;
     }
 
@@ -126,6 +127,7 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
                 perror("read");
                 return -1;
             }
+            
             //only copy the few overflowing bytes
             memcpy((char *)readBuf + firstCopySize, file->buf, (file->bufPosition + nbyte) - file->bufSize);
             file->bufPosition = (file->bufPosition + nbyte) - file->bufSize;
@@ -134,6 +136,7 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
         }else{
             
             if(file->bufPosition == 0){
+
                 // On the first read call do a syscall to fill the entire buf. On subsequent read call get them information 
                 // stored in out Buf until it cannot any longer
                 if ((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
@@ -203,79 +206,47 @@ ssize_t myseek(MYFILE *file, off_t offset, int whence) {
  * mywrite
  */
 
-ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t Count) {
+ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
 
     // check the null cases
     if((file == NULL || fileBuf == NULL)) {
-        printf("file is NULL\n");
+        printf("file or fileBuf is NULL\n");
         return -1;
     }
     
     // check the case if O_READ is on, user should not be able to write 
-    if((file->flags & O_RDONLY) == 0) {
+    if(file->flags & O_RDONLY) {
         printf("Cannot write in read-only mode");
         return -1;
     }
 
     // case if O_WRITE is not on 
-    if((file->flags & O_WRONLY) == 0) {
+    if(!(file->flags & O_WRONLY)) {
         printf("O_WRONLY flag not set");
         return -1;
     }
 
-    // check if buffer is full and then flush if needed 
-    if(file->bufSize <= file->count + Count) {
+    // If the buffer won't fit the new data, flush it first
+    if(file->bufSize - file->count < nbyte) {
         myflush(file);
     }
 
-    // Check if the buffer can fit the count user specifies 
-    if(file->bufSize >= file->count + Count) {
-        memcpy(file->buf + file->count, fileBuf, Count);
-        file->count += Count; // update the new count of bytes in the buffer 
-        return Count; // return number of bytes written 
-    }
-    
-    // If count exceeds buffer size then we should call write 
-    if(Count > file->bufSize) {
-        write(file->fd, file->buf, Count);
-        return Count;
-    }
+    // If data is too big to fit into the buffer, write directly.
+    if(nbyte > file->bufSize) {
+        write(file->fd, fileBuf, nbyte);
+        return nbyte;
+    } else {
+        // Write into the buffer
+        memcpy(file->buf + file->count, fileBuf, nbyte);
+        file->count += nbyte;
 
-    // Case if the buffer overflows, we should flush first and then write 
-    if(Count >= file->bufSize) {
-        myflush(file);
-    }
-
-   // The case if the last user instruction was myread, the bufPos should move to the beggining of the file
-    // if(file->lastOperationWrite == 1) {
-    //     myflush(file);
-    //     file->lastOperationWrite = 0;
-    // }
-    // Miriam: I am fixing this if condition as it relates to myRead, i think this is where you were rewriting your write data in the if right above here
-
-    if(file->lastOperationRead == 1) {
-        file->lastOperationRead = 0;
-        file->bufPosition = 0;
-    }
-
-    //The case if total bytes written is less than buffersize
-    if(Count < file->bufSize) {
-        size_t remainingSpace = file->bufSize - file->count;
-        // check if there is enough space in the buffer 
-        if(remainingSpace >= Count){
-            memcpy(file->buf + file->count, fileBuf, Count);
-            file->count += Count;
-        }
-        else
-        {
-            // flush buffer to the file and write 
+        // Check if the buffer is full and flush
+        if(file->count >= file->bufSize) {
             myflush(file);
-            memcpy(file->buf + file->count, fileBuf, Count);
-            file->count += Count;
         }
-        return Count;
+        
+        return nbyte;
     }
-    return Count;
 }
 
 
@@ -294,6 +265,7 @@ int myflush(MYFILE *file) {
         perror("write");
         return -1;
     }
+    
     return 0;
 }
 
