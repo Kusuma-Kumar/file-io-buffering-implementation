@@ -1,5 +1,6 @@
-# Compile your C code (if not already compiled)
-gcc myio.c test.c -o test
+# Compile C code (if not already compiled)
+gcc -g myio.c test.c -o test
+
 # Check if compilation was successful
 if [ $? -eq 0 ]; then
     echo "Compilation successful!"

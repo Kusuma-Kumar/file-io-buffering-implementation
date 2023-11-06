@@ -1,0 +1,1 @@
+This write has succeeded. Buffer overflow test.smallBuffer full test. This data is larger than the users internal buffer size.smallFor writers looking for an easy way to inspire creativity, they don't need to look any further.smallNew data written to the beginning.

@@ -13,37 +13,33 @@
 #include <errno.h>
 #include "myio.h"
 
-#define BUFFER_SIZE 8
+#define BUFFER_SIZE 36
 
 /*
  * myopen
  */
 
 MYFILE *myopen(const char *pathname, int flags) {
+    // ask about memory leaks
     MYFILE *file;
     if ((file = (MYFILE *)malloc(sizeof(MYFILE))) == NULL) {
-        perror("malloc");
         return NULL;
     }
 
     int validFlags = O_CREAT | O_WRONLY | O_RDONLY | O_RDWR | O_TRUNC;
     if ((flags & validFlags) != flags) {
-        printf("%s\n", "Not a valid flag");
         free(file);
         return NULL;
     }
 
-    //assume a mode of 0666
+    // assume a mode of 0666
     if ((file->fd = open(pathname, flags, 0666)) == -1) {
-        perror("open");
         free(file);
         return NULL;
     }
 
     if ((file->buf = malloc(BUFFER_SIZE)) == NULL) {
-        perror("malloc");
-        close(file->fd); // the file descriptor can no longer be used as it is not longer valid 
-        free(file);
+        myclose(file);
         return NULL;
     }
 
@@ -54,25 +50,24 @@ MYFILE *myopen(const char *pathname, int flags) {
     file->userPointer = 0;
     file->lastOperationWrite = 0;
     file->lastOperationRead = 0;
-    file->count = 0; // ask Miriam
+    file->count = 0;
     
     return file;
 }
 
-
-
 /*
  * myread
+ * 
+ * I have changed myread to also receive size_t readBufSize which is the sizeof(readBuf)
+ * without this change, I had a difference in the sizeof(readBuf) as this file gave me size 8 
+ * while my original readBuf I passed from main had 12 bytes
  */
 
-ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
-
+ssize_t myread(MYFILE *file, void *readBuf, size_t readBufSize, size_t nbyte) {
     ssize_t bytesRead = 0;
-    off_t result;
 
-    //check read permissions based on flags
-    if (file->flags != O_RDONLY && file->flags != O_RDWR) {
-        printf("%s\n", "Not a valid read flag");
+    if ((file->flags != O_RDONLY && file->flags != O_RDWR) || nbyte < 0) {
+        // Not a valid read flag or cannot read -ve number of bytes
         return -1;
     }
 
@@ -80,95 +75,69 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
         return 0;
     }
 
-    if (nbyte < 0) {
-        printf("%s\n", "Cannot read -ve number of bytes");
-        return -1;
-    }
-
     if(file->lastOperationWrite == 1) {
-        myflush(file); 
-        file->bufPosition = 0;
-        file->lastOperationWrite = 0;
-    }
-
-    // Check if the user is requesting more bytes than the struct buf size,
-    // then there is no point of our buffer, call syscall read directly
-    if (nbyte >= file->bufSize) {
-        if(file->lastOperationRead){
-            if((result = lseek(file->fd,file->userPointer,SEEK_SET)) == -1) {
-                perror("lseek");
-                return -1;
-            }
-            file->userPointer = result;
-        }
-
-        // if nbyte > size of readBuf it will only give us size of readBuf bytes, user's mistake for requesting more than their readBuf can actually handle
-        if ((bytesRead = read(file->fd, readBuf, nbyte)) == -1) {
-            perror("read");
+        if (myflush(file) == -1) {
             return -1;
         }
+        file->lastOperationWrite = 0;
+        // we wanna offset back to the begining of the file as 
+        // the user technically want to start reading from the beggining of the file
+        // ask 
+        // if(myseek(file,file->bufPosition,SEEK_SET) == -1) {
+        //     return -1;
+        // }
+    }
 
-        // printf("bytes read directly %d\n", bytesRead);
-        
-        //reset the buffer
-        file->bufPosition = 0;
-        file->userPointer += bytesRead;
+    size_t maxToRead = (nbyte < readBufSize) ? nbyte : readBufSize;
     
-    } else if(file->bufPosition <= file->bufSize) {
+    if (file->bufPosition == 0){
+        // On the first read call do a syscall to fill the entire buf. 
+        // On subsequent read call get them information stored in file->buf
+        if ((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
+            return -1;
+        }
+        memcpy(readBuf, file->buf, maxToRead);
+        file->userPointer += maxToRead;
+        file->bufPosition += maxToRead;
+    
+    } else {
+        // We have data available to use in file->buf
+        if(file->bufPosition + maxToRead <= file->bufSize){
+            memcpy(readBuf, file->buf + file->bufPosition, maxToRead);
+            file->userPointer += maxToRead;
+            file->bufPosition += maxToRead;
         
-        //check if there is still room in buffer for the users request
-        if(file->bufPosition + nbyte >= file->bufSize){
-            
-            //but the user has also requested more bytes which overflows the buf
-            //so call syscall read to fill the buffer again and continue with overflow
-            int firstCopySize = file->bufSize - file->bufPosition;
+        } else {
+            // We have initial data available in the file->buf but we know it will overflow 
+            // so call syscall read to fill the buffer again and continue reading overflow
+            size_t firstCopySize = file->bufSize - file->bufPosition;
             memcpy(readBuf, file->buf + file->bufPosition, firstCopySize);
             if ((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
-                perror("read");
                 return -1;
             }
             
-            //only copy the few overflowing bytes
-            memcpy((char *)readBuf + firstCopySize, file->buf, (file->bufPosition + nbyte) - file->bufSize);
-            file->bufPosition = (file->bufPosition + nbyte) - file->bufSize;
-            file->userPointer += nbyte;
-        
-        }else{
-            
-            if(file->bufPosition == 0){
-
-                // On the first read call do a syscall to fill the entire buf. On subsequent read call get them information 
-                // stored in out Buf until it cannot any longer
-                if ((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
-                    perror("read");
-                    return -1;
-                }
-            }
-            
-            // Copy only requested bytes of data from file->buf into readBuf
-            memcpy(readBuf, file->buf + file->bufPosition, nbyte);
-            file->userPointer += nbyte;
-            file->bufPosition += nbyte;
+            size_t secondCopySize = maxToRead - firstCopySize;
+            memcpy((char*)readBuf + firstCopySize, file->buf, secondCopySize);
+            file->userPointer += maxToRead;
+            file->bufPosition = secondCopySize;
         }
     }
+    
+    file->lastOperationRead = 1;
 
-    file->lastOperationRead=1;
-    return bytesRead;
+    return maxToRead;
 }
-
-
 
 /*
  * myseek
  */
 
-// call syscall lseek, reposition pointers
 ssize_t myseek(MYFILE *file, off_t offset, int whence) {
     off_t result;
-    int newOffset;
+    off_t newOffset;
     
     if (offset < 0) {
-        printf("Cannot have -ve offset");
+        // Cannot have -ve offset
         return -1;
     }
 
@@ -177,30 +146,31 @@ ssize_t myseek(MYFILE *file, off_t offset, int whence) {
     }else if (whence == SEEK_SET) {
         newOffset = offset;
     }else{
-        printf("%s\n", "Not a valid whence value");
+       // Not a valid whence value
         return -1;
     }
 
-    // flush the buffer/reset file->buf before seeking to prevent read and write data getting mixed by changing offset location and rereading/rewriting data
+    // flush the buffer/reset file->buf before seeking to 
+    // prevent read and write data getting mixed by changing offset location and rereading/rewriting data
+    // ask if i am doing this right
     if(file->lastOperationRead == 1) {
         file->lastOperationRead = 0;
         file->bufPosition = 0;
     }
     if(file->lastOperationWrite == 1) {
         file->lastOperationWrite = 0;
-        myflush(file);
+        if (myflush(file) == -1) {
+            return -1;
+        }
     }
     if ((result = lseek(file->fd, newOffset, SEEK_SET)) == -1) {
-        perror("lseek");
         return -1;
     }
 
     file->userPointer = result;
+    
     return result;
 }
-// in mywrite if last instruction was myread - then call lseek, offset should be beginning of file
-
-
 
 /*
  * mywrite
@@ -228,7 +198,9 @@ ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
 
     // If the buffer won't fit the new data, flush it first
     if(file->bufSize - file->count < nbyte) {
-        myflush(file);
+        if (myflush(file) == -1) {
+            return -1;
+        }
     }
 
     // If data is too big to fit into the buffer, write directly.
@@ -242,20 +214,19 @@ ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
 
         // Check if the buffer is full and flush
         if(file->count >= file->bufSize) {
-            myflush(file);
+            if (myflush(file) == -1) {
+                return -1;
+            }
         }
         
         return nbyte;
     }
 }
 
-
-
 /*
  * myflush
  */
 
-// flush forces a write out of all user-space buffered data, for given output file 
 int myflush(MYFILE *file) {
     if(file == NULL) {
         printf("file is not defined");
@@ -266,16 +237,15 @@ int myflush(MYFILE *file) {
         return -1;
     }
     
+    file->bufPosition = 0;
+    file->count = 0;
     return 0;
 }
-
-
 
 /*
  * myclose
  */
 
-// close file 
 int myclose(MYFILE *file) {
     if(file == NULL) {
         printf("file is not defined");
@@ -284,7 +254,6 @@ int myclose(MYFILE *file) {
 
     // close file descriptor 
     if(close(file->fd) == -1) {
-        perror("close");
         return -1; 
     }
 
