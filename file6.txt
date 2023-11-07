@@ -1,0 +1,7 @@
+The machine then repeatedly scans left to right over the input. 
+In each pass it erases the first symbol it sees marked with ' but remembers 
+that symbol in its finite control (to "erase" really means to write the blank symbol u). 
+It then scans forward until itsees the first symbol marked with " checks that that symbol is the same, and erases it. 
+If the two symbols are not the same, it rejects. Otherwise, 
+when it has erased all the symbols, it accepts. 
+In our example, the following would be the tape contents after each pass.

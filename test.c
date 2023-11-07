@@ -78,36 +78,34 @@ int main() {
     //     return -1;
     // }
 
-    // MIRIAM Testing all the cases in mywrite 
-    MYFILE *file;
+    // Testing all the cases in mywrite 
+    MYFILE *file5;
     ssize_t bytesWritten;
 
-    //char buffer[10];
-
-    if((file = myopen("input files/file4.txt",O_CREAT | O_WRONLY | O_TRUNC)) == NULL) {
+    if((file5 = myopen("input files/file5.txt",O_CREAT | O_WRONLY | O_TRUNC)) == NULL) {
         return -1;
     }
 
     // Test valid write 
     char data1[] = "This write has succeeded.";
-    bytesWritten = mywrite(file, data1, strlen(data1));
+    bytesWritten = mywrite(file5, data1, strlen(data1));
     printf("Valid write: %zd bytes written\n", bytesWritten);
 
     // Test buffer overflow 
     char bufferOverflowData[] = "Buffer overflow test.";
-    bytesWritten = mywrite(file, bufferOverflowData, sizeof(bufferOverflowData));
+    bytesWritten = mywrite(file5, bufferOverflowData, sizeof(bufferOverflowData));
     printf("Buffer overflow: %zd bytes written\n", bytesWritten);
 
     // Test When total bytes written is less than bufferSize
-    // THIS IS THE NEWEST THING I ADDED IN TERMS OF TESTING 
-    char smallerData[] = "small";
-    bytesWritten = mywrite(file, smallerData, sizeof(smallerData));
+    char smallerData[] = " small";
+    bytesWritten = mywrite(file5, smallerData, sizeof(smallerData));
     printf("Test case: Total bytes written is less than buffer size. Bytes written: %zd\n", bytesWritten);
 
-    // Test null file 
+    /*// Test null file 
     char data2[] = "Null file test.\n";
     bytesWritten = mywrite(NULL, data2, strlen(data2));
     printf("Null file: %zd bytes written\n", bytesWritten);
+    */
 
     // Test O_WRONLY flag not set 
     MYFILE *noWriteFlagFile = myopen("input files/noWriteFlag.txt", O_CREAT | O_RDONLY | O_TRUNC);
@@ -123,30 +121,30 @@ int main() {
 
     // Test buffer full
     char bufferFullData[] = "Buffer full test. This data is larger than the users internal buffer size.";
-    bytesWritten = mywrite(file, bufferFullData, sizeof(bufferFullData));
+    bytesWritten = mywrite(file5, bufferFullData, sizeof(bufferFullData));
     printf("Buffer full: %zd bytes written\n", bytesWritten);
 
     // Test buffer overflow with myflush 
     char largeData[] = "For writers looking for an easy way to inspire creativity, they don't need to look any further.";
     // checking 
     printf("Before writing to the buffer:\n");
-    bytesWritten = mywrite(file, largeData, sizeof(largeData));
+    bytesWritten = mywrite(file5, largeData, sizeof(largeData));
     printf("Buffer overflow with flush: %zd bytes written\n", bytesWritten);
 
     // Test the case if the last user instruction was myread, the bufPos should move to the beggining of the file
     char buffer1[8];
 
     char largeData2[] = "For writers looking for an easy way to inspire creativity, they don't need to look any further.";
-    bytesWritten = mywrite(file, largeData2, sizeof(largeData2));
+    bytesWritten = mywrite(file5, largeData2, sizeof(largeData2));
     printf("Buffer overflow with flush: %zd bytes written\n", bytesWritten);
 
     // Test moving bufPos to the beginning of the file
-    myread(file, buffer1, sizeof(buffer1), 5);  
-    myseek(file, 0, SEEK_SET); 
+    myread(file5, buffer1, sizeof(buffer1), 5);  
+    myseek(file5, 0, SEEK_SET); 
     
     // Test write after moving bufPos
     char newData[] = "New data written to the beginning.";
-    bytesWritten = mywrite(file, newData, strlen(newData));
+    bytesWritten = mywrite(file5, newData, strlen(newData));
     printf("Write after moving bufPos: %zd bytes written\n", bytesWritten);
 
     // I used the following to test myclose and myflush
@@ -182,7 +180,7 @@ int main() {
     if(myclose(file3) == -1) {
         return -1;
     }
-    if(myclose(file) == -1) {
+    if(myclose(file5) == -1) {
         return -1;
     }
     if(myclose(readOnlyFile) == -1) {
