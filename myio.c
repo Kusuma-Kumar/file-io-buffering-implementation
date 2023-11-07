@@ -20,7 +20,6 @@
  */
 
 MYFILE *myopen(const char *pathname, int flags) {
-    // ask about memory leaks
     MYFILE *file;
     if ((file = (MYFILE *)malloc(sizeof(MYFILE))) == NULL) {
         return NULL;
@@ -79,13 +78,8 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t readBufSize, size_t nbyte) {
         if (myflush(file) == -1) {
             return -1;
         }
+        file->bufPosition = 0;
         file->lastOperationWrite = 0;
-        // we wanna offset back to the begining of the file as 
-        // the user technically want to start reading from the beggining of the file
-        // ask 
-        // if(myseek(file,file->bufPosition,SEEK_SET) == -1) {
-        //     return -1;
-        // }
     }
 
     size_t maxToRead = (nbyte < readBufSize) ? nbyte : readBufSize;
@@ -152,7 +146,6 @@ ssize_t myseek(MYFILE *file, off_t offset, int whence) {
 
     // flush the buffer/reset file->buf before seeking to 
     // prevent read and write data getting mixed by changing offset location and rereading/rewriting data
-    // ask if i am doing this right
     if(file->lastOperationRead == 1) {
         file->lastOperationRead = 0;
         file->bufPosition = 0;
@@ -162,6 +155,7 @@ ssize_t myseek(MYFILE *file, off_t offset, int whence) {
         if (myflush(file) == -1) {
             return -1;
         }
+        file->bufPosition = 0;
     }
     if ((result = lseek(file->fd, newOffset, SEEK_SET)) == -1) {
         return -1;
@@ -237,7 +231,7 @@ int myflush(MYFILE *file) {
         return -1;
     }
     
-    file->bufPosition = 0;
+    // file->bufPosition = 0;
     file->count = 0;
     return 0;
 }
