@@ -1,0 +1,6 @@
+Your TM may make use of multiple tapes, with the assumption (shown in class)
+that a multi-tape TM can be simulated with a single tape TM.
+You do not have to give all of the transitions, but you should describe the
+algorithm with sufficient detail--including how you will use the tape or tapes--to make it clear how it can be implemented in specific transitions. 
+That is, give a high-level algorithm rather than the details of the transitions.
+You may make use of the solution to HW15.

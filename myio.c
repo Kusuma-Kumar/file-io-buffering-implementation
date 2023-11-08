@@ -96,7 +96,7 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t readBufSize, size_t nbyte) {
     
     } else {
         // We have data available to use in file->buf
-        if(file->bufPosition + maxToRead <= file->bufSize){
+        if(file->bufPosition + maxToRead <= file->bufSize) {
             memcpy(readBuf, file->buf + file->bufPosition, maxToRead);
             file->userPointer += maxToRead;
             file->bufPosition += maxToRead;
@@ -174,19 +174,16 @@ ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
 
     // check the null cases
     if((file == NULL || fileBuf == NULL)) {
-        printf("file or fileBuf is NULL\n");
         return -1;
     }
-    
-    // check the case if O_READ is on, user should not be able to write 
+
+    // check the case if only O_READ is on, user should not be able to write 
     if(file->flags & O_RDONLY) {
-        printf("Cannot write in read-only mode");
         return -1;
     }
 
     // case if O_WRITE is not on 
     if(!(file->flags & O_WRONLY)) {
-        printf("O_WRONLY flag not set");
         return -1;
     }
 
@@ -222,16 +219,12 @@ ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
  */
 
 int myflush(MYFILE *file) {
-    if(file == NULL) {
-        printf("file is not defined");
-    }
-
     if(write(file->fd, file->buf, file->count)== -1) {
         perror("write");
         return -1;
     }
     
-    // file->bufPosition = 0;
+    file->bufPosition = 0;
     file->count = 0;
     return 0;
 }

@@ -68,7 +68,7 @@ int main() {
     bytesRead = myread(file2, readBuf, sizeof(readBuf), bytesRequested);
     printf("Read file2: %.*s\n", (int)bytesRead, readBuf);
 
-    if((file3 = myopen("input files/sample.txt", O_CREAT | O_WRONLY | O_TRUNC)) == NULL){
+    if((file3 = myopen("input files/sample.txt", O_CREAT | O_WRONLY | O_TRUNC)) == NULL) {
         return -1;
     }
     printf("sample file was created\n");
@@ -93,53 +93,47 @@ int main() {
 
     // Test buffer overflow 
     char bufferOverflowData[] = "Buffer overflow test.";
-    bytesWritten = mywrite(file5, bufferOverflowData, sizeof(bufferOverflowData));
+    bytesWritten = mywrite(file5, bufferOverflowData, strlen(bufferOverflowData));
     printf("Buffer overflow: %zd bytes written\n", bytesWritten);
 
     // Test When total bytes written is less than bufferSize
-    char smallerData[] = " small";
-    bytesWritten = mywrite(file5, smallerData, sizeof(smallerData));
+    char smallerData[] = "small";
+    bytesWritten = mywrite(file5, smallerData, strlen(smallerData));
     printf("Test case: Total bytes written is less than buffer size. Bytes written: %zd\n", bytesWritten);
 
-    /*// Test null file 
-    char data2[] = "Null file test.\n";
-    bytesWritten = mywrite(NULL, data2, strlen(data2));
-    printf("Null file: %zd bytes written\n", bytesWritten);
-    */
-
     // Test O_WRONLY flag not set 
-    MYFILE *noWriteFlagFile = myopen("input files/noWriteFlag.txt", O_CREAT | O_RDONLY | O_TRUNC);
+    MYFILE *noWriteFlagFile = myopen("input files/noWriteFlag.txt", O_CREAT | O_RDONLY);
     char data[] = "O_WRONLY flag not set test.\n";
     bytesWritten = mywrite(noWriteFlagFile, data, strlen(data));
     printf("O_WRONLY flag not set: %zd bytes written\n", bytesWritten);
 
     // Test readOnly mode 
-    MYFILE *readOnlyFile = myopen("input files/readOnly.txt", O_CREAT | O_WRONLY | O_TRUNC | O_RDONLY);
+    MYFILE *readOnlyFile = myopen("input files/readOnly.txt", O_CREAT | O_RDONLY);
     char data3[] = "Read-only mode test.";
     bytesWritten = mywrite(readOnlyFile, data3, strlen(data3));
     printf("Read-only mode: %zd bytes written\n", bytesWritten);
 
     // Test buffer full
     char bufferFullData[] = "Buffer full test. This data is larger than the users internal buffer size.";
-    bytesWritten = mywrite(file5, bufferFullData, sizeof(bufferFullData));
+    bytesWritten = mywrite(file5, bufferFullData, strlen(bufferFullData));
     printf("Buffer full: %zd bytes written\n", bytesWritten);
 
     // Test buffer overflow with myflush 
     char largeData[] = "For writers looking for an easy way to inspire creativity, they don't need to look any further.";
     // checking 
     printf("Before writing to the buffer:\n");
-    bytesWritten = mywrite(file5, largeData, sizeof(largeData));
+    bytesWritten = mywrite(file5, largeData, strlen(largeData));
     printf("Buffer overflow with flush: %zd bytes written\n", bytesWritten);
 
     // Test the case if the last user instruction was myread, the bufPos should move to the beggining of the file
     char buffer1[8];
 
     char largeData2[] = "For writers looking for an easy way to inspire creativity, they don't need to look any further.";
-    bytesWritten = mywrite(file5, largeData2, sizeof(largeData2));
+    bytesWritten = mywrite(file5, largeData2, strlen(largeData2));
     printf("Buffer overflow with flush: %zd bytes written\n", bytesWritten);
 
     // Test moving bufPos to the beginning of the file
-    myread(file5, buffer1, sizeof(buffer1), 5);  
+    myread(file5, buffer1, strlen(buffer1), 5);  
     myseek(file5, 0, SEEK_SET); 
     
     // Test write after moving bufPos
@@ -148,8 +142,7 @@ int main() {
     printf("Write after moving bufPos: %zd bytes written\n", bytesWritten);
 
     // I used the following to test myclose and myflush
-    // Test myopen 
-    if((file1 = myopen("input files/file4.txt", O_WRONLY | O_TRUNC)) == NULL) {
+    if((file1 = myopen("input files/file4.txt", O_CREAT | O_WRONLY )) == NULL) {
         return -1;
     }
 
