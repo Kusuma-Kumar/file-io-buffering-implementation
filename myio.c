@@ -84,7 +84,7 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t readBufSize, size_t nbyte) {
 
     size_t maxToRead = (nbyte < readBufSize) ? nbyte : readBufSize;
     
-    if (file->bufPosition == 0){
+    if (file->bufPosition == 0) {
         // On the first read call do a syscall to fill the entire buf. 
         // On subsequent read call get them information stored in file->buf
         if ((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
@@ -137,26 +137,22 @@ ssize_t myseek(MYFILE *file, off_t offset, int whence) {
 
     if (whence == SEEK_CUR) {
         newOffset = file->userPointer + offset;
-    }else if (whence == SEEK_SET) {
+    } else if (whence == SEEK_SET) {
         newOffset = offset;
-    }else{
+    } else {
        // Not a valid whence value
         return -1;
     }
 
     // flush the buffer/reset file->buf before seeking to 
     // prevent read and write data getting mixed by changing offset location and rereading/rewriting data
-    if(file->lastOperationRead == 1) {
-        file->lastOperationRead = 0;
-        file->bufPosition = 0;
+    if (myflush(file) == -1) {
+        return -1;
     }
-    if(file->lastOperationWrite == 1) {
-        file->lastOperationWrite = 0;
-        if (myflush(file) == -1) {
-            return -1;
-        }
-        file->bufPosition = 0;
-    }
+    file->lastOperationRead = 0;
+    file->bufPosition = 0;
+    file->lastOperationWrite = 0;
+
     if ((result = lseek(file->fd, newOffset, SEEK_SET)) == -1) {
         return -1;
     }
@@ -171,19 +167,17 @@ ssize_t myseek(MYFILE *file, off_t offset, int whence) {
  */
 
 ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
-
+    file->lastOperationWrite = 1;
     // check the null cases
-    if((file == NULL || fileBuf == NULL)) {
+    if(nbyte < 0) {
         return -1;
     }
-
-    // check the case if only O_READ is on, user should not be able to write 
-    if(file->flags & O_RDONLY) {
-        return -1;
+    if(nbyte == 0) {
+        return 0;
     }
 
     // case if O_WRITE is not on 
-    if(!(file->flags & O_WRONLY)) {
+    if(!(file->flags & O_WRONLY) && !(file->flags & O_RDWR)) {
         return -1;
     }
 
@@ -219,13 +213,15 @@ ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
  */
 
 int myflush(MYFILE *file) {
-    if(write(file->fd, file->buf, file->count)== -1) {
-        perror("write");
-        return -1;
+    if(file->lastOperationWrite == 1) {
+        if(write(file->fd, file->buf, file->count)== -1) {
+            perror("write");
+            return -1;
+        }
+        
+        file->bufPosition = 0;
+        file->count = 0;
     }
-    
-    file->bufPosition = 0;
-    file->count = 0;
     return 0;
 }
 
