@@ -1,5 +1,5 @@
-#ifndef MYIO_H
-#define MYIO_H
+#ifndef __MYIO_H
+#define __MYIO_H
 
 #include <sys/types.h> 
 
