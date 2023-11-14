@@ -90,7 +90,8 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t readBufSize, size_t nbyte) {
         if ((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
             return -1;
         }
-        memcpy(readBuf, file->buf, maxToRead);
+        // AND IF U THINK MY LOGIC IS CORRECT YOU COULD ADD THE LINE HERE IF NOT IGNORE
+        memcpy(readBuf, file->buf, maxToRead); //THIS LINE HERE I THINK IS THE ISSUE FOR SEGFAULT LOOK BELOW FOR COMMENT
         file->userPointer += maxToRead;
         file->bufPosition += maxToRead;
     
@@ -121,6 +122,17 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t readBufSize, size_t nbyte) {
 
     return maxToRead;
 }
+/*
+HI KUSKUS
+I'm assuming segfault because its reading more bytes than whats available in the file?
+So, lets say if there are fewer bytes read than file->bufsize
+You still use mempcy to copy the maxToREAD bytes into readBuf which could technically be more than 
+the actual bytes read. which is why there could be a segfault? 
+
+above memcpy mabey add this line 
+// adjust maxToRead to be smaller than the bytes we wanna read and the # of bytes in the actual buffer
+maxToRead = (maxToRead < bytesRead) ? maxToRead : bytesRead
+*/
 
 /*
  * myseek
@@ -182,7 +194,9 @@ ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
     }
 
     // If the buffer won't fit the new data, flush it first
-    if(file->bufSize - file->count < nbyte) {
+    //CHANGE MIRIAM MADE 
+    //this should have been if(file->bufSize - file->count <= nbyte) to prevent overflow
+    if(file->bufSize - file->count <= nbyte) {
         if (myflush(file) == -1) {
             return -1;
         }
@@ -233,6 +247,14 @@ int myclose(MYFILE *file) {
     if(file == NULL) {
         printf("file is not defined");
         return -1;
+    }
+
+    //MIRIAM ADDED THIS
+    //TO FIX CLOSE I SHOULD FLUSH BUGFER BEFORE CLOSING IF IT'S A WRITE OPERATION
+    if(file->lastOperationWrite){
+        if(myflush(file) == -1){
+            return -1;
+        }
     }
 
     // close file descriptor 
