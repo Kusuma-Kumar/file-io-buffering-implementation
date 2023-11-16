@@ -22,21 +22,30 @@ int main() {
 
     // any request to read of nbyte > sizeof(readBuf) will only give you sizeof(readBuf) bytes as that the max the readBuf can handle
     // test for initial read
-    bytesRequested = 8;
-    bytesRead = myread(file1, readBuf, sizeof(readBuf), bytesRequested);
+    bytesRequested = 16;
+    bytesRead = myread(file1, readBuf, bytesRequested);
     printf("Read file1: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
 
     // testing read for continuation 
     // i.e providing whats in the buffer without making another sys call
-    bytesRequested = 6;
-    bytesRead = myread(file1, readBuf, sizeof(readBuf), bytesRequested);
+    bytesRequested = 12;
+    bytesRead = myread(file1, readBuf, bytesRequested);
     printf("Read file1: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
+
+    // testing read for two copies providing from the buffer and overflowing bytes 
+    bytesRequested = 20;
+    bytesRead = myread(file1, readBuf, bytesRequested);
+    printf("Read file1: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
 
     // testing for request more that file->buf size
     // this also tests for continuation with buffer overflow (firstCopySize and secondCopySize)
     bytesRequested = 85;
-    bytesRead = myread(file1, readBuf, sizeof(readBuf), bytesRequested);
+    bytesRead = myread(file1, readBuf, bytesRequested);
     printf("Read file1: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
 
     // Test myseek
     myseek(file1, 4, SEEK_SET);
@@ -44,8 +53,9 @@ int main() {
 
     // testing offset to see if it read from offset 4
     bytesRequested = 16;
-    bytesRead = myread(file1, readBuf, sizeof(readBuf), bytesRequested);
+    bytesRead = myread(file1, readBuf, bytesRequested);
     printf("Read file1: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
    
     // test myopen and myread on different files
     if((file2 = myopen("input files/file2.txt", O_RDONLY)) == NULL) {
@@ -53,20 +63,23 @@ int main() {
     }
 
     bytesRequested = 10;
-    bytesRead = myread(file2, readBuf, sizeof(readBuf), bytesRequested);
+    bytesRead = myread(file2, readBuf, bytesRequested);
     printf("Read file2: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
     
     bytesRequested = 8;
-    bytesRead = myread(file2, readBuf, sizeof(readBuf), bytesRequested);
+    bytesRead = myread(file2, readBuf, bytesRequested);
     printf("Read file2: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
 
     myseek(file2, 8, SEEK_CUR);
     printf("SEEK_CUR to offset 8 in file2 \n");
     
     // testing offset to see if it read from current location + 8 bytes
     bytesRequested = 15;
-    bytesRead = myread(file2, readBuf, sizeof(readBuf), bytesRequested);
+    bytesRead = myread(file2, readBuf, bytesRequested);
     printf("Read file2: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
 
     if((file3 = myopen("input files/sample.txt", O_CREAT | O_WRONLY | O_TRUNC)) == NULL) {
         return -1;
@@ -133,7 +146,7 @@ int main() {
     printf("Buffer overflow with flush: %zd bytes written\n", bytesWritten);
 
     // Test moving bufPos to the beginning of the file
-    myread(file5, buffer1, strlen(buffer1), 5);  
+    myread(file5, buffer1, 5);  
     myseek(file5, 0, SEEK_SET); 
     
     // Test write after moving bufPos
@@ -176,13 +189,19 @@ int main() {
     if(myclose(file5) == -1) {
         return -1;
     }
-    if(myclose(readOnlyFile) == -1) {
+
+    MYFILE *fileMix;
+    if((fileMix = myopen("input files/mixReadandWrite.txt", O_RDWR)) == NULL) {
         return -1;
     }
-    if(myclose(noWriteFlagFile) == -1) {
-        return -1;
-    }
-    
+    myread(fileMix, readBuf, 16);
+    mywrite(fileMix, data4, strlen(data4));
+    myread(fileMix, readBuf, 8);
+    mywrite(fileMix, data4, strlen(data4));
+    myread(fileMix, readBuf, 30);
+    mywrite(fileMix, data4, strlen(data4));
+    myread(fileMix, readBuf, 8);
+
     return 0;
 }
 
