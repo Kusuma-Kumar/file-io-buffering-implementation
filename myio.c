@@ -42,6 +42,9 @@ MYFILE *myopen(const char *pathname, int flags) {
         return NULL;
     }
 
+    // initilizes buffer to zero to prevent issues with uninitialized bytes when later writing data from buffer
+    memset (file->buf, 0, BUFFER_SIZE) ;
+
     // Initialize other fields included in struct that will be used in the future for all out other functions too
     file->flags = flags;
     file->bufSize = BUFFER_SIZE;
@@ -59,6 +62,7 @@ MYFILE *myopen(const char *pathname, int flags) {
  */
 
 ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
+    printf("In my read\n");
     ssize_t bytesRead = 0;
     ssize_t finalBytesReturned = 0;
 
@@ -85,6 +89,11 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
             return -1;
         }
         file->bufData = bytesRead;
+
+        printf("Buffer contents:\n");
+        for (int i = 0; i < file->bufSize; ++i) {
+            printf("%c", file->buf[i]);
+        }
     }
 
     if (file->bufPosition + nbyte >= file->bufSize){
@@ -93,6 +102,7 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
         // so call syscall read to fill the buffer again and continue with overflow
         // file->bufData store how much data i have remaining in my buf
         int firstCopySize = file->bufData;
+        printf("firstCopySize %d\n", firstCopySize);
         memcpy (readBuf, file->buf + file->bufPosition, firstCopySize);
         if ((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
             return -1;
@@ -104,8 +114,9 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
             return firstCopySize;
         }
         //only copy the few overflowing bytes
-        int secondCopySize = nbyte - firstCopySize;
+        int secondCopySize = (file->bufSize < nbyte) ? file->bufSize - firstCopySize : nbyte - firstCopySize ;
         secondCopySize = (file->bufData < secondCopySize) ? file->bufData : secondCopySize;
+        printf("secondCopySize %d\n", secondCopySize);
         memcpy((char *)readBuf + firstCopySize, file->buf, secondCopySize);
         file->bufPosition = (file->bufPosition + nbyte) - file->bufSize;
         file->userPointer += nbyte;
@@ -113,17 +124,21 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
         file->bufData = file->bufData - secondCopySize;
     
     } else {
-        // There is still data in buffer to fill the users request
+        // There is enough data in the buffer to fulfill the user's request
         memcpy(readBuf, file->buf + file->bufPosition, nbyte);
         file->bufPosition += nbyte;
         file->userPointer += nbyte;
-        finalBytesReturned = (file->bufData < nbyte)? file->bufData : nbyte;
+        finalBytesReturned = (file->bufData < nbyte) ? file->bufData : nbyte;
         file->bufData = file->bufData - finalBytesReturned;
     }
     
     file->lastOperationRead = 1;
+
+    printf("File file->userPointer: %d\n", file->userPointer);
+    printf("file->bufPosition: %d\n", file->bufPosition);
     return finalBytesReturned;
 }
+
 
 
 /*
@@ -170,8 +185,7 @@ ssize_t myseek(MYFILE *file, off_t offset, int whence) {
  */
 
 ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
-    // check the null cases
-    if(nbyte < 0) {
+    if (file == NULL) {
         return -1;
     }
 
@@ -179,27 +193,28 @@ ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
         return 0;
     }
 
-    // case if O_WRITE is not on 
-    if(!(file->flags & O_WRONLY) && !(file->flags & O_RDWR)) {
+    if((!(file->flags & O_WRONLY) && !(file->flags & O_RDWR))|| nbyte < 0) {
         return -1;
     }
-
-
-    // Flush the buffer first if it contains any data
-    if(file->count > 0) {
-        if(myflush(file) == -1){
-            return -1;
-        }
+    
+    if(file->lastOperationRead == 1) {
+        myseek(file, file->userPointer, SEEK_SET);
+        file->bufPosition = 0;
+        file->lastOperationRead = 0;
     }
 
     // If data is too big to fit into the buffer, write directly.
-    if(nbyte > file->bufSize) {
+    if(file->bufPosition + nbyte > file->bufSize) {
         ssize_t written = write(file->fd, fileBuf, nbyte);
         if(written == -1){
             perror("write");
             return -1;
         }
+
         file->lastOperationWrite = 1;
+        file->count += written;
+        file->bufPosition += written;
+        file->userPointer += written;
         return written; 
     }
     else
@@ -207,7 +222,9 @@ ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
         // Should write into buffer
         memcpy(file->buf + file->count, fileBuf, nbyte);
         file->count += nbyte;
-
+        file->bufPosition += nbyte;
+        file->userPointer += nbyte;
+        
         // Check if the buffer is full and then flush 
         if(file->count >= file->bufSize){
             if(myflush(file) == -1){
