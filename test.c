@@ -5,7 +5,6 @@
 #include "myio.h"
 
 int main() {
-    /*
     MYFILE *file1;
     MYFILE *file2;
     MYFILE *file3;
@@ -17,10 +16,10 @@ int main() {
     if((file1 = myopen("input files/file1.txt", O_RDONLY)) == NULL) {
         return -1;
     }
-    */
+
     // Test myread
     char readBuf[16];
-/*
+
     // any request to read of nbyte > sizeof(readBuf) will only give you sizeof(readBuf) bytes as that the max the readBuf can handle
     // test for initial read
     bytesRequested = 16;
@@ -159,11 +158,9 @@ int main() {
     if((file1 = myopen("input files/file4.txt", O_CREAT | O_WRONLY )) == NULL) {
         return -1;
     }
-*/
+
     // Test mywrite 
     char data4[] = "blahhhh";
-
-    /*
 
     if(mywrite(file1, data4, strlen(data4)) == -1) {
         return -1;
@@ -192,7 +189,6 @@ int main() {
     if(myclose(file5) == -1) {
         return -1;
     }
-    */
 
     MYFILE *fileMix;
     if((fileMix = myopen("input files/mixReadandWrite.txt", O_RDWR)) == NULL) {
@@ -203,10 +199,8 @@ int main() {
     myread(fileMix, readBuf, 8);
     mywrite(fileMix, data4, strlen(data4));
     myread(fileMix, readBuf, 30);
-    //Its after this read that whatever is called next (read or write) we get a segfault 
     mywrite(fileMix, data4, strlen(data4));
     myread(fileMix, readBuf, 8);
-    mywrite(fileMix, data4, strlen(data4));
 
     return 0;
 }

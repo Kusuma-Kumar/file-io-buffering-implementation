@@ -105,7 +105,7 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
         }
         //only copy the few overflowing bytes
         int secondCopySize = nbyte - firstCopySize;
-        secondCopySize = (file->bufData < secondCopySize) ? file->bufData : secondCopySize;
+        secondCopySize = (file->bufData < secondCopySize)? file->bufData : secondCopySize;
         memcpy((char *)readBuf + firstCopySize, file->buf, secondCopySize);
         file->bufPosition = (file->bufPosition + nbyte) - file->bufSize;
         file->userPointer += nbyte;
@@ -170,11 +170,11 @@ ssize_t myseek(MYFILE *file, off_t offset, int whence) {
  */
 
 ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
+    file->lastOperationWrite = 1;
     // check the null cases
     if(nbyte < 0) {
         return -1;
     }
-
     if(nbyte == 0) {
         return 0;
     }
@@ -184,42 +184,34 @@ ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
         return -1;
     }
 
-
-    // Flush the buffer first if it contains any data
-    if(file->count > 0) {
-        if(myflush(file) == -1){
+    // If the buffer won't fit the new data, flush it first
+    //CHANGE MIRIAM MADE 
+    //this should have been if(file->bufSize - file->count <= nbyte) to prevent overflow
+    if(file->bufSize - file->count <= nbyte) {
+        if (myflush(file) == -1) {
             return -1;
         }
     }
 
     // If data is too big to fit into the buffer, write directly.
     if(nbyte > file->bufSize) {
-        ssize_t written = write(file->fd, fileBuf, nbyte);
-        if(written == -1){
-            perror("write");
-            return -1;
-        }
-        file->lastOperationWrite = 1;
-        return written; 
-    }
-    else
-    {
-        // Should write into buffer
+        write(file->fd, fileBuf, nbyte);
+        return nbyte;
+    } else {
+        // Write into the buffer
         memcpy(file->buf + file->count, fileBuf, nbyte);
         file->count += nbyte;
 
-        // Check if the buffer is full and then flush 
-        if(file->count >= file->bufSize){
-            if(myflush(file) == -1){
+        // Check if the buffer is full and flush
+        if(file->count >= file->bufSize) {
+            if (myflush(file) == -1) {
                 return -1;
             }
         }
-        file->lastOperationWrite = 1; 
-        return nbyte; 
+        
+        return nbyte;
     }
 }
-    
-  
 
 /*
  * myflush
@@ -243,17 +235,22 @@ int myflush(MYFILE *file) {
  */
 
 int myclose(MYFILE *file) {
-    if(file->lastOperationWrite) {
+    if(file == NULL) {
+        printf("file is not defined");
+        return -1;
+    }
+
+    //MIRIAM ADDED THIS
+    //TO FIX CLOSE I SHOULD FLUSH BUFFER BEFORE CLOSING IF IT'S A WRITE OPERATION
+    if(file->lastOperationWrite){
         if(myflush(file) == -1){
             return -1;
         }
     }
 
-    // check if the file descriptor is valid and then close
-    if(file->fd >= 0) {
-        if (close(file->fd) == -1) {
-            return -1;
-        }
+    // close file descriptor 
+    if(close(file->fd) == -1) {
+        return -1; 
     }
 
     // deallocate memory in buffer 
