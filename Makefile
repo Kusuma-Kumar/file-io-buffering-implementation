@@ -1,8 +1,5 @@
 CFLAGS = -Wall -pedantic
 
-.PHONY: all
-all: test run-test
-
 %.o: %.c
 	gcc -g $(CFLAGS) -c -o $@ $^
 
@@ -11,7 +8,7 @@ test: test.o myio.o
 
 .PHONY: run-test
 run-test: test
-	./testMyFunctions.sh
+	./test
 
 .PHONY: clean
 clean:
