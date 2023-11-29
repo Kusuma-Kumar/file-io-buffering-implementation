@@ -43,7 +43,7 @@ MYFILE *myopen(const char *pathname, int flags) {
     }
 
     // initilizes buffer to zero to prevent issues with uninitialized bytes when later writing data from buffer
-    memset (file->buf, 0, BUFFER_SIZE);
+    memset (file->buf, 0, BUFFER_SIZE) ;
 
     // Initialize other fields included in struct that will be used in the future for all out other functions too
     file->flags = flags;
@@ -75,7 +75,7 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
         return 0;
     }
 
-    if (file->lastOperationWrite == 1) {
+    if(file->lastOperationWrite == 1) {
         if (myflush(file) == -1) {
             return -1;
         }
@@ -84,8 +84,8 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
     }
     
     // do an initial read
-    if (file->bufPosition == 0){
-        if ((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
+    if(file->bufPosition == 0){
+        if((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
             return -1;
         }
         file->bufData = bytesRead;
@@ -109,7 +109,7 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
         }
         file->bufData = bytesRead;
         // reached end of file
-        if (bytesRead == 0) {
+        if(bytesRead == 0) {
             file->bufPosition = 0;
             return firstCopySize;
         }
@@ -189,22 +189,22 @@ ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
         return -1;
     }
 
-    if (nbyte == 0) {
+    if(nbyte == 0) {
         return 0;
     }
 
-    if ((!(file->flags & O_WRONLY) && !(file->flags & O_RDWR))|| nbyte < 0) {
+    if((!(file->flags & O_WRONLY) && !(file->flags & O_RDWR))|| nbyte < 0) {
         return -1;
     }
     
-    if (file->lastOperationRead == 1) {
+    if(file->lastOperationRead == 1) {
         myseek(file, file->userPointer, SEEK_SET);
         file->bufPosition = 0;
         file->lastOperationRead = 0;
     }
 
-    // If data is too big to fit into the buffer, write directly
-    if (file->bufPosition + nbyte > file->bufSize) {
+    // If data is too big to fit into the buffer, write directly.
+    if(file->bufPosition + nbyte > file->bufSize) {
         ssize_t written = write(file->fd, fileBuf, nbyte);
         if(written == -1){
             perror("write");
@@ -226,7 +226,7 @@ ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
         file->userPointer += nbyte;
         
         // Check if the buffer is full and then flush 
-        if (file->count >= file->bufSize){
+        if(file->count >= file->bufSize){
             if(myflush(file) == -1){
                 return -1;
             }
@@ -243,8 +243,8 @@ ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
  */
 
 int myflush(MYFILE *file) {
-    if (file->lastOperationWrite == 1) {
-        if (write(file->fd, file->buf, file->count)== -1) {
+    if(file->lastOperationWrite == 1) {
+        if(write(file->fd, file->buf, file->count)== -1) {
             perror("write");
             return -1;
         }
@@ -260,21 +260,21 @@ int myflush(MYFILE *file) {
  */
 
 int myclose(MYFILE *file) {
-    if (file->lastOperationWrite) {
+    if(file->lastOperationWrite) {
         if(myflush(file) == -1){
             return -1;
         }
     }
 
     // check if the file descriptor is valid and then close
-    if (file->fd >= 0) {
+    if(file->fd >= 0) {
         if (close(file->fd) == -1) {
             return -1;
         }
     }
 
     // deallocate memory in buffer 
-    if (file->buf != NULL) {
+    if(file->buf != NULL) {
         free(file->buf);
     }
 

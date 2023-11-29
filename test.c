@@ -198,15 +198,15 @@ int main() {
     if((fileMix = myopen("input files/mixReadandWrite.txt", O_RDWR)) == NULL) {
         return -1;
     }
-    //myread(fileMix, readBuf, 16);
-    //mywrite(fileMix, data4, strlen(data4));
-   // myread(fileMix, readBuf, 8);
-   // mywrite(fileMix, data4, strlen(data4));
+    myread(fileMix, readBuf, 16);
+    mywrite(fileMix, data4, strlen(data4));
+    myread(fileMix, readBuf, 8);
+    mywrite(fileMix, data4, strlen(data4));
     myread(fileMix, readBuf, 30);
     // Its after this read that whatever is called next (read or write) we get a segfault 
-    //mywrite(fileMix, data4, strlen(data4));
+    mywrite(fileMix, data4, strlen(data4));
     myread(fileMix, readBuf, 8);
-   // mywrite(fileMix, data4, strlen(data4));
+    mywrite(fileMix, data4, strlen(data4));
 
     // int bytesRequested;
     // size_t bytesRead;
