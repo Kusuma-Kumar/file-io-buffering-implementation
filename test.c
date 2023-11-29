@@ -203,10 +203,45 @@ int main() {
     myread(fileMix, readBuf, 8);
     mywrite(fileMix, data4, strlen(data4));
     myread(fileMix, readBuf, 30);
-    //Its after this read that whatever is called next (read or write) we get a segfault 
+    // Its after this read that whatever is called next (read or write) we get a segfault 
     mywrite(fileMix, data4, strlen(data4));
     myread(fileMix, readBuf, 8);
     mywrite(fileMix, data4, strlen(data4));
+
+    // int bytesRequested;
+    // size_t bytesRead;
+    // bytesRequested = 16;
+    // bytesRead = myread(fileMix, readBuf, bytesRequested);
+    // printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
+    // printf("Bytes Read %d\n",(int)bytesRead);
+
+    // mywrite(fileMix, data4, strlen(data4));
+
+    // bytesRequested = 8;
+    // bytesRead = myread(fileMix, readBuf, bytesRequested);
+    // printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
+    // printf("Bytes Read %d\n",(int)bytesRead);
+
+    // mywrite(fileMix, data4, strlen(data4));
+
+    // bytesRequested = 30;
+    // bytesRead = myread(fileMix, readBuf, bytesRequested);
+    // printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
+    // printf("Bytes Read %d\n",(int)bytesRead);
+
+    // mywrite(fileMix, data4, strlen(data4));
+
+    // bytesRequested = 18;
+    // bytesRead = myread(fileMix, readBuf, bytesRequested);
+    // printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
+    // printf("Bytes Read %d\n",(int)bytesRead);
+
+    // mywrite(fileMix, data4, strlen(data4));
+
+    // bytesRequested = 24;
+    // bytesRead = myread(fileMix, readBuf, bytesRequested);
+    // printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
+    // printf("Bytes Read %d\n",(int)bytesRead);
 
     return 0;
 }
