@@ -13,11 +13,10 @@ typedef struct fileInfo {
     int userPointer; // index to keep track of the current position within the file the user expects to be at, mocking the use of offset
     int lastOperationRead;
     int lastOperationWrite;
-    ssize_t bufData; //keep track of how full the buffer gets - to track the end of file case
 } MYFILE;
 
 MYFILE *myopen(const char *pathname, int flags);
-ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte);
+ssize_t myread(MYFILE *file, void *readBuf, size_t readBufSize, size_t nbyte);
 ssize_t myseek(MYFILE *file, off_t offset, int whence);
 int myflush(MYFILE *file);
 ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte);

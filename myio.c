@@ -56,11 +56,14 @@ MYFILE *myopen(const char *pathname, int flags) {
 
 /*
  * myread
+ * 
+ * I have changed myread to also receive size_t readBufSize which is the sizeof(readBuf)
+ * without this change, I had a difference in the sizeof(readBuf) as this file gave me size 8 
+ * while my original readBuf I passed from main had 12 bytes
  */
 
-ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
+ssize_t myread(MYFILE *file, void *readBuf, size_t readBufSize, size_t nbyte) {
     ssize_t bytesRead = 0;
-    ssize_t finalBytesReturned = 0;
 
     if ((file->flags != O_RDONLY && file->flags != O_RDWR) || nbyte < 0) {
         // Not a valid read flag or cannot read -ve number of bytes
@@ -78,53 +81,58 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
         file->bufPosition = 0;
         file->lastOperationWrite = 0;
     }
-    
-    // do an initial read
-    if(file->bufPosition == 0){
-        if((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
-            return -1;
-        }
-        file->bufData = bytesRead;
-    }
 
-    if (file->bufPosition + nbyte >= file->bufSize){
+    size_t maxToRead = (nbyte < readBufSize) ? nbyte : readBufSize;
     
-        // the user has requested more bytes which overflows the buf
-        // so call syscall read to fill the buffer again and continue with overflow
-        // file->bufData store how much data i have remaining in my buf
-        int firstCopySize = file->bufData;
-        memcpy (readBuf, file->buf + file->bufPosition, firstCopySize);
+    if (file->bufPosition == 0) {
+        // On the first read call do a syscall to fill the entire buf. 
+        // On subsequent read call get them information stored in file->buf
         if ((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
             return -1;
         }
-        file->bufData = bytesRead;
-        // reached end of file
-        if(bytesRead == 0) {
-            file->bufPosition = 0;
-            return firstCopySize;
-        }
-        //only copy the few overflowing bytes
-        int secondCopySize = nbyte - firstCopySize;
-        secondCopySize = (file->bufData < secondCopySize)? file->bufData : secondCopySize;
-        memcpy((char *)readBuf + firstCopySize, file->buf, secondCopySize);
-        file->bufPosition = (file->bufPosition + nbyte) - file->bufSize;
-        file->userPointer += nbyte;
-        finalBytesReturned = firstCopySize + secondCopySize;
-        file->bufData = file->bufData - secondCopySize;
+        // AND IF U THINK MY LOGIC IS CORRECT YOU COULD ADD THE LINE HERE IF NOT IGNORE
+        memcpy(readBuf, file->buf, maxToRead); //THIS LINE HERE I THINK IS THE ISSUE FOR SEGFAULT LOOK BELOW FOR COMMENT
+        file->userPointer += maxToRead;
+        file->bufPosition += maxToRead;
     
     } else {
-        // There is still data in buffer to fill the users request
-        memcpy(readBuf, file->buf + file->bufPosition, nbyte);
-        file->bufPosition += nbyte;
-        file->userPointer += nbyte;
-        finalBytesReturned = (file->bufData < nbyte)? file->bufData : nbyte;
-        file->bufData = file->bufData - finalBytesReturned;
+        // We have data available to use in file->buf
+        if(file->bufPosition + maxToRead <= file->bufSize) {
+            memcpy(readBuf, file->buf + file->bufPosition, maxToRead);
+            file->userPointer += maxToRead;
+            file->bufPosition += maxToRead;
+        
+        } else {
+            // We have initial data available in the file->buf but we know it will overflow 
+            // so call syscall read to fill the buffer again and continue reading overflow
+            size_t firstCopySize = file->bufSize - file->bufPosition;
+            memcpy(readBuf, file->buf + file->bufPosition, firstCopySize);
+            if ((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
+                return -1;
+            }
+            
+            size_t secondCopySize = maxToRead - firstCopySize;
+            memcpy((char*)readBuf + firstCopySize, file->buf, secondCopySize);
+            file->userPointer += maxToRead;
+            file->bufPosition = secondCopySize;
+        }
     }
     
     file->lastOperationRead = 1;
-    return finalBytesReturned;
-}
 
+    return maxToRead;
+}
+/*
+HI KUSKUS
+I'm assuming segfault because its reading more bytes than whats available in the file?
+So, lets say if there are fewer bytes read than file->bufsize
+You still use mempcy to copy the maxToREAD bytes into readBuf which could technically be more than 
+the actual bytes read. which is why there could be a segfault? 
+
+above memcpy mabey add this line 
+// adjust maxToRead to be smaller than the bytes we wanna read and the # of bytes in the actual buffer
+maxToRead = (maxToRead < bytesRead) ? maxToRead : bytesRead
+*/
 
 /*
  * myseek
@@ -162,6 +170,7 @@ ssize_t myseek(MYFILE *file, off_t offset, int whence) {
     }
 
     file->userPointer = result;
+    
     return result;
 }
 
@@ -241,7 +250,7 @@ int myclose(MYFILE *file) {
     }
 
     //MIRIAM ADDED THIS
-    //TO FIX CLOSE I SHOULD FLUSH BUFFER BEFORE CLOSING IF IT'S A WRITE OPERATION
+    //TO FIX CLOSE I SHOULD FLUSH BUGFER BEFORE CLOSING IF IT'S A WRITE OPERATION
     if(file->lastOperationWrite){
         if(myflush(file) == -1){
             return -1;
