@@ -5,7 +5,6 @@
 #include "myio.h"
 
 int main() {
-    /*
     MYFILE *file1;
     MYFILE *file2;
     MYFILE *file3;
@@ -17,10 +16,9 @@ int main() {
     if((file1 = myopen("input files/file1.txt", O_RDONLY)) == NULL) {
         return -1;
     }
-    */
     // Test myread
-    char readBuf[16];
-/*
+    char readBuf[36];
+
     // any request to read of nbyte > sizeof(readBuf) will only give you sizeof(readBuf) bytes as that the max the readBuf can handle
     // test for initial read
     bytesRequested = 16;
@@ -41,13 +39,6 @@ int main() {
     printf("Read file1: %.*s\n", (int)bytesRead, readBuf);
     printf("Bytes Read %d\n",(int)bytesRead);
 
-    // testing for request more that file->buf size
-    // this also tests for continuation with buffer overflow (firstCopySize and secondCopySize)
-    bytesRequested = 85;
-    bytesRead = myread(file1, readBuf, bytesRequested);
-    printf("Read file1: %.*s\n", (int)bytesRead, readBuf);
-    printf("Bytes Read %d\n",(int)bytesRead);
-
     // Test myseek
     myseek(file1, 4, SEEK_SET);
     printf("SEEK_SET to offset 4 in file1 \n");
@@ -63,12 +54,12 @@ int main() {
         return -1;
     }
 
-    bytesRequested = 10;
+    bytesRequested = 20;
     bytesRead = myread(file2, readBuf, bytesRequested);
     printf("Read file2: %.*s\n", (int)bytesRead, readBuf);
     printf("Bytes Read %d\n",(int)bytesRead);
     
-    bytesRequested = 8;
+    bytesRequested = 32;
     bytesRead = myread(file2, readBuf, bytesRequested);
     printf("Read file2: %.*s\n", (int)bytesRead, readBuf);
     printf("Bytes Read %d\n",(int)bytesRead);
@@ -159,10 +150,9 @@ int main() {
     if((file1 = myopen("input files/file4.txt", O_CREAT | O_WRONLY )) == NULL) {
         return -1;
     }
-*/
+
     // Test mywrite 
     char data4[] = "blahhhh";
-    /*
 
     if(mywrite(file1, data4, strlen(data4)) == -1) {
         return -1;
@@ -191,56 +181,48 @@ int main() {
     if(myclose(file5) == -1) {
         return -1;
     }
-    */
 
     MYFILE *fileMix;
     if((fileMix = myopen("input files/mixReadandWrite.txt", O_RDWR)) == NULL) {
         return -1;
     }
-    //myread(fileMix, readBuf, 16);
-    //mywrite(fileMix, data4, strlen(data4));
-    //myread(fileMix, readBuf, 8);
-    //mywrite(fileMix, data4, strlen(data4));
-    myread(fileMix, readBuf, 30);
-    //Its after this read that whatever is called next (read or write) we get a segfault 
-    //mywrite(fileMix, data4, strlen(data4));
-    myread(fileMix, readBuf, 12);
+
+    bytesRequested = 16;
+    bytesRead = myread(fileMix, readBuf, bytesRequested);
+    printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
+
     mywrite(fileMix, data4, strlen(data4));
 
-    // int bytesRequested;
-    // size_t bytesRead;
-    // bytesRequested = 16;
-    // bytesRead = myread(fileMix, readBuf, bytesRequested);
-    // printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
-    // printf("Bytes Read %d\n",(int)bytesRead);
+    bytesRequested = 32;
+    bytesRead = myread(fileMix, readBuf, bytesRequested);
+    printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
 
-    // mywrite(fileMix, data4, strlen(data4));
+    mywrite(fileMix, data4, strlen(data4));
 
-    // bytesRequested = 8;
-    // bytesRead = myread(fileMix, readBuf, bytesRequested);
-    // printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
-    // printf("Bytes Read %d\n",(int)bytesRead);
+    bytesRequested = 35;
+    bytesRead = myread(fileMix, readBuf, bytesRequested);
+    printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
 
-    // mywrite(fileMix, data4, strlen(data4));
+    mywrite(fileMix, data4, strlen(data4));
 
-    // bytesRequested = 30;
-    // bytesRead = myread(fileMix, readBuf, bytesRequested);
-    // printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
-    // printf("Bytes Read %d\n",(int)bytesRead);
+    bytesRequested = 29;
+    bytesRead = myread(fileMix, readBuf, bytesRequested);
+    printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
 
-    // mywrite(fileMix, data4, strlen(data4));
+    mywrite(fileMix, data4, strlen(data4));
 
-    // bytesRequested = 18;
-    // bytesRead = myread(fileMix, readBuf, bytesRequested);
-    // printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
-    // printf("Bytes Read %d\n",(int)bytesRead);
+    bytesRequested = 36;
+    bytesRead = myread(fileMix, readBuf, bytesRequested);
+    printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
 
-    // mywrite(fileMix, data4, strlen(data4));
-
-    // bytesRequested = 24;
-    // bytesRead = myread(fileMix, readBuf, bytesRequested);
-    // printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
-    // printf("Bytes Read %d\n",(int)bytesRead);
+    if(myclose(fileMix) == -1) {
+        return -1;
+    }
 
     return 0;
 }
