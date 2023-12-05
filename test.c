@@ -21,7 +21,7 @@ int main() {
 
     // any request to read of nbyte > sizeof(readBuf) will only give you sizeof(readBuf) bytes as that the max the readBuf can handle
     // test for initial read
-    bytesRequested = 16;
+    bytesRequested = 68;
     bytesRead = myread(file1, readBuf, bytesRequested);
     printf("Read file1: %.*s\n", (int)bytesRead, readBuf);
     printf("Bytes Read %d\n",(int)bytesRead);
@@ -34,7 +34,7 @@ int main() {
     printf("Bytes Read %d\n",(int)bytesRead);
 
     // testing read for two copies providing from the buffer and overflowing bytes 
-    bytesRequested = 20;
+    bytesRequested = 74;
     bytesRead = myread(file1, readBuf, bytesRequested);
     printf("Read file1: %.*s\n", (int)bytesRead, readBuf);
     printf("Bytes Read %d\n",(int)bytesRead);

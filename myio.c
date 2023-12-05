@@ -38,12 +38,10 @@ MYFILE *myopen(const char *pathname, int flags) {
     }
 
     if ((file->buf = malloc(BUFFER_SIZE)) == NULL) {
-        myclose(file);
+        close(file->fd);
+        free(file);
         return NULL;
     }
-
-    // initilizes buffer to zero to prevent issues with uninitialized bytes when later writing data from buffer
-    memset (file->buf, 0, BUFFER_SIZE);
 
     // Initialize other fields included in struct that will be used in the future for all out other functions too
     file->flags = flags;
@@ -84,6 +82,16 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
    
    file->lastOperationRead = 1;
     // do an initial read
+    if(nbyte >= file->bufSize) {
+        printf("nbyte >= file->bufSize\n");
+        myseek(file, file->userPointer, SEEK_SET);
+        if ((bytesRead = read(file->fd, readBuf, nbyte)) == -1) {
+            return -1;
+        }
+        file->userPointer += bytesRead;
+        return bytesRead;
+    }
+    
     if (file->bufPosition == 0) {
         if ((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
             return -1;
@@ -203,75 +211,43 @@ ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
         file->bufPosition = 0;
         file->lastOperationRead = 0;
     }
-    file->lastOperationWrite = 1; 
+    file->lastOperationWrite = 1;  
 
-    // // Flush the buffer first if it contains any data
-    // if(file->count > 0) {
-    //     file->userPointer += file->count;
-    //     if(myflush(file) == -1) {
-    //         return -1;
-    //     }
-    // }
+    // Flush the buffer first if it contains any data
+    if(file->count > 0) {
+        file->userPointer += file->count;
+        if(myflush(file) == -1) {
+            return -1;
+        }
+        file->count = 0;
+        file->bufPosition = 0;
+    }
 
-    // // If data is too big to fit into the buffer, write directly.
-    // if(nbyte > file->bufSize) {
-    //     ssize_t written = write(file->fd, fileBuf, nbyte);
-    //     if(written == -1) {
-    //         return -1;
-    //     }
-    //     file->lastOperationWrite = 1;
-    //     return written; 
-    // }
-    // else
-    // {
-    //     // Should write into buffer
-    //     memcpy(file->buf + file->count, fileBuf, nbyte);
-    //     file->count += nbyte;
-
-    //     // Check if the buffer is full and then flush 
-    //     if(file->count >= file->bufSize) {
-    //         if(myflush(file) == -1) {
-    //             return -1;
-    //         }
-    //     }
-    //     file->lastOperationWrite = 1; 
-    //     return nbyte; 
-    // }
-
-    // If data is too big to fit into the buffer, write directly
-    if (file->bufPosition + nbyte > file->bufSize) {
-        ssize_t written = write(file->fd, fileBuf, file->bufSize);
+    // If data is too big to fit into the buffer, write directly.
+    if(nbyte > file->bufSize) {
+        ssize_t written = write(file->fd, fileBuf, nbyte);
         if(written == -1) {
             return -1;
         }
-
-        printf("In file->bufPosition + nbyte > file->bufSize\n");
-        file->count += written;
-        file->bufPosition += written;
         file->userPointer += written;
-        printf("file->count %d\n", file->count);
-        printf("file->bufPosition %d\n", file->bufPosition);
-        printf("file->userPointer %d\n", file->userPointer);
         return written; 
-    
-    } else {
-        printf("In  else of file->bufPosition + nbyte > file->bufSize\n");
+    }
+    else
+    {
         // Should write into buffer
-        memcpy(file->buf + file->count, fileBuf, nbyte);
+        memcpy(file->buf + file->bufPosition, fileBuf, nbyte);
         file->count += nbyte;
         file->bufPosition += nbyte;
         file->userPointer += nbyte;
-        printf("file->count %d\n", file->count);
-        printf("file->bufPosition %d\n", file->bufPosition);
-        printf("file->userPointer %d\n", file->userPointer);
-        
+
         // Check if the buffer is full and then flush 
-        if (file->count >= file->bufSize) {
+        if(file->bufPosition >= file->bufSize) {
             if(myflush(file) == -1) {
                 return -1;
             }
             file->count = 0;
-        }
+            file->bufPosition = 0;
+        } 
         return nbyte; 
     }
 }
