@@ -39,9 +39,11 @@ MYFILE *myopen(const char *pathname, int flags) {
 
     if ((file->buf = malloc(BUFFER_SIZE)) == NULL) {
         myclose(file);
-        free(file);
         return NULL;
     }
+
+    // initilizes buffer to zero to prevent issues with uninitialized bytes when later writing data from buffer
+    memset (file->buf, 0, BUFFER_SIZE);
 
     // Initialize other fields included in struct that will be used in the future for all out other functions too
     file->flags = flags;
@@ -79,39 +81,62 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
         file->bufPosition = 0;
         file->lastOperationWrite = 0;
     }
-    file->lastOperationRead = 1;
-
-    // Loop continues reading data from file to buf until request is read 
-    while (nbyte > 0) {
-        // If buffer is empty or there is not enough data, we can fill it
-        // File->bufData stores how much data i have remaining in my buf
-        if(file->bufPosition >= file->bufData) {
-
-            bytesRead = read(file->fd, file->buf, file->bufSize);
-
-            if(bytesRead < 0) {
-                // Read error 
-                return -1;
-            }
-            else if(bytesRead == 0) {
-                // If we reach the end of the file then there isnt any more data
-                return finalBytesReturned;
-            }
-
-            file->bufData = bytesRead;
-            file->bufPosition = 0;
+   
+   file->lastOperationRead = 1;
+    // do an initial read
+    if (file->bufPosition == 0) {
+        if ((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
+            return -1;
         }
-        // Check how much to copy from the buffer for user request
-        size_t bufAvail = file->bufData - file->bufPosition;
-        size_t copyAmount = ((nbyte < bufAvail) ? nbyte : bufAvail);
 
-        // Copy copyAmount bytes from file->buf starting from curr bufPositon to userBuf starting at offset 
-        memcpy((char *)readBuf + finalBytesReturned, file->buf + file->bufPosition, copyAmount);
+        // empty/end of file
+        if (bytesRead == 0) {
+            file->bufPosition = 0;
+            return 0;
+        }
 
-        file->bufPosition += copyAmount;
-        finalBytesReturned += copyAmount;
-        nbyte -= copyAmount; 
+        file->bufData = bytesRead;
     }
+
+    if (file->bufPosition + nbyte >= file->bufSize) {
+    
+        // the user has requested more bytes which overflows the buf
+        // so call syscall read to fill the buffer again and continue with overflow
+        // file->bufData store how much data i have remaining in my buf
+        int firstCopySize = file->bufData;
+        memcpy (readBuf, file->buf + file->bufPosition, firstCopySize);
+        if ((bytesRead = read(file->fd, file->buf, file->bufSize)) == -1) {
+            return -1;
+        }
+        file->bufData = bytesRead;
+        
+        // reached end of file
+        if (bytesRead == 0) {
+            file->bufPosition = 0;
+            return firstCopySize;
+        }
+        
+        //only copy the few overflowing bytes
+        int secondCopySize = (file->bufSize < nbyte) ? file->bufSize - firstCopySize : nbyte - firstCopySize ;
+        secondCopySize = (file->bufData < secondCopySize) ? file->bufData : secondCopySize;
+        
+        memcpy((char *)readBuf + firstCopySize, file->buf, secondCopySize);
+        
+        file->bufPosition = (file->bufPosition + nbyte) - file->bufSize;
+        file->userPointer += nbyte;
+        finalBytesReturned = firstCopySize + secondCopySize;
+        file->bufData = file->bufData - secondCopySize;
+
+    } else {
+        // There is enough data in the buffer to fulfill the user's request
+        memcpy(readBuf, file->buf + file->bufPosition, nbyte);
+        
+        file->bufPosition += nbyte;
+        file->userPointer += nbyte;
+        finalBytesReturned = (file->bufData < nbyte) ? file->bufData : nbyte;
+        file->bufData = file->bufData - finalBytesReturned;
+    }
+    
     return finalBytesReturned;
 }
 
