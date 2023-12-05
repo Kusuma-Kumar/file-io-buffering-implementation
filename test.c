@@ -92,17 +92,17 @@ int main() {
     }
 
     // Test valid write 
-    char data1[] = "This write has succeeded.";
+    char data1[] = "This write has succeeded. ";
     bytesWritten = mywrite(file5, data1, strlen(data1));
     printf("Valid write: %zd bytes written\n", bytesWritten);
 
     // Test buffer overflow 
-    char bufferOverflowData[] = "Buffer overflow test.";
+    char bufferOverflowData[] = "Buffer overflow test. ";
     bytesWritten = mywrite(file5, bufferOverflowData, strlen(bufferOverflowData));
     printf("Buffer overflow: %zd bytes written\n", bytesWritten);
 
     // Test When total bytes written is less than bufferSize
-    char smallerData[] = "small";
+    char smallerData[] = "small ";
     bytesWritten = mywrite(file5, smallerData, strlen(smallerData));
     printf("Test case: Total bytes written is less than buffer size. Bytes written: %zd\n", bytesWritten);
 
@@ -114,17 +114,17 @@ int main() {
 
     // Test readOnly mode 
     MYFILE *readOnlyFile = myopen("input files/readOnly.txt", O_CREAT | O_RDONLY);
-    char data3[] = "Read-only mode test.";
+    char data3[] = "Read-only mode test. ";
     bytesWritten = mywrite(readOnlyFile, data3, strlen(data3));
     printf("Read-only mode: %zd bytes written\n", bytesWritten);
 
     // Test buffer full
-    char bufferFullData[] = "Buffer full test. This data is larger than the users internal buffer size.";
+    char bufferFullData[] = "Buffer full test. This data is larger than the users internal buffer size. ";
     bytesWritten = mywrite(file5, bufferFullData, strlen(bufferFullData));
     printf("Buffer full: %zd bytes written\n", bytesWritten);
 
     // Test buffer overflow with myflush 
-    char largeData[] = "For writers looking for an easy way to inspire creativity, they don't need to look any further.";
+    char largeData[] = "I took one of the wooden clubs while Larry took the longer one. We slowly snuck up behind the seal until we were close. ";
     // checking 
     printf("Before writing to the buffer:\n");
     bytesWritten = mywrite(file5, largeData, strlen(largeData));
@@ -133,7 +133,7 @@ int main() {
     // Test the case if the last user instruction was myread, the bufPos should move to the beggining of the file
     char buffer1[8];
 
-    char largeData2[] = "For writers looking for an easy way to inspire creativity, they don't need to look any further.";
+    char largeData2[] = "For writers looking for an easy way to inspire creativity, they don't need to look any further. ";
     bytesWritten = mywrite(file5, largeData2, strlen(largeData2));
     printf("Buffer overflow with flush: %zd bytes written\n", bytesWritten);
 
