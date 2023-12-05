@@ -83,7 +83,6 @@ ssize_t myread(MYFILE *file, void *readBuf, size_t nbyte) {
    file->lastOperationRead = 1;
     // do an initial read
     if(nbyte >= file->bufSize) {
-        printf("nbyte >= file->bufSize\n");
         myseek(file, file->userPointer, SEEK_SET);
         if ((bytesRead = read(file->fd, readBuf, nbyte)) == -1) {
             return -1;
@@ -231,9 +230,8 @@ ssize_t mywrite(MYFILE *file, const void *fileBuf, size_t nbyte) {
         }
         file->userPointer += written;
         return written; 
-    }
-    else
-    {
+    
+    } else {
         // Should write into buffer
         memcpy(file->buf + file->bufPosition, fileBuf, nbyte);
         file->count += nbyte;
@@ -272,18 +270,13 @@ int myflush(MYFILE *file) {
  * myclose
  */
 
+// removed return -1 on these checks as early returns would cause others not to be freed.
 int myclose(MYFILE *file) {
-    if (file->lastOperationWrite) {
-        if(myflush(file) == -1) {
-            return -1;
-        }
-    }
+    myflush(file);
 
     // check if the file descriptor is valid and then close
     if (file->fd >= 0) {
-        if (close(file->fd) == -1) {
-            return -1;
-        }
+        close(file->fd);
     }
 
     // deallocate memory in buffer 

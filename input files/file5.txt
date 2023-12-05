@@ -1,1 +1,1 @@
-New data written to the beginning.erflow test.smallBuffer full test. This data is larger than the users internal buffer size.For writers looking for an easy way to inspire creativity, they don't need to look any further.For writers looking for an easy way to inspire creativity, they don't need to look any further.
+New data over-written at the beginning.w test.small.Buffer full test: This data is larger than the users internal buffer size.For writers looking for an easy way to inspire creativity, they don't need to look any further.

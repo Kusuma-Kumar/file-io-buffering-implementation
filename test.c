@@ -21,7 +21,7 @@ int main() {
 
     // any request to read of nbyte > sizeof(readBuf) will only give you sizeof(readBuf) bytes as that the max the readBuf can handle
     // test for initial read
-    bytesRequested = 68;
+    bytesRequested = 30;
     bytesRead = myread(file1, readBuf, bytesRequested);
     printf("Read file1: %.*s\n", (int)bytesRead, readBuf);
     printf("Bytes Read %d\n",(int)bytesRead);
@@ -78,7 +78,7 @@ int main() {
     }
     printf("sample file was created\n");
 
-    // commenting this test out as it empties file contents to zero 
+    // // commenting this test out as it empties file contents to zero 
     // if((file4 = myopen("input files/file1.txt", O_RDONLY | O_TRUNC)) == NULL) {
     //     return -1;
     // }
@@ -102,7 +102,7 @@ int main() {
     printf("Buffer overflow: %zd bytes written\n", bytesWritten);
 
     // Test When total bytes written is less than bufferSize
-    char smallerData[] = "small";
+    char smallerData[] = "small.";
     bytesWritten = mywrite(file5, smallerData, strlen(smallerData));
     printf("Test case: Total bytes written is less than buffer size. Bytes written: %zd\n", bytesWritten);
 
@@ -119,7 +119,7 @@ int main() {
     printf("Read-only mode: %zd bytes written\n", bytesWritten);
 
     // Test buffer full
-    char bufferFullData[] = "Buffer full test. This data is larger than the users internal buffer size.";
+    char bufferFullData[] = "Buffer full test: This data is larger than the users internal buffer size.";
     bytesWritten = mywrite(file5, bufferFullData, strlen(bufferFullData));
     printf("Buffer full: %zd bytes written\n", bytesWritten);
 
@@ -130,19 +130,11 @@ int main() {
     bytesWritten = mywrite(file5, largeData, strlen(largeData));
     printf("Buffer overflow with flush: %zd bytes written\n", bytesWritten);
 
-    // Test the case if the last user instruction was myread, the bufPos should move to the beggining of the file
-    char buffer1[8];
-
-    char largeData2[] = "For writers looking for an easy way to inspire creativity, they don't need to look any further.";
-    bytesWritten = mywrite(file5, largeData2, strlen(largeData2));
-    printf("Buffer overflow with flush: %zd bytes written\n", bytesWritten);
-
-    // Test moving bufPos to the beginning of the file
-    myread(file5, buffer1, 5);  
+    // // Test moving bufPos
     myseek(file5, 0, SEEK_SET); 
     
     // Test write after moving bufPos
-    char newData[] = "New data written to the beginning.";
+    char newData[] = "New data over-written at the beginning.";
     bytesWritten = mywrite(file5, newData, strlen(newData));
     printf("Write after moving bufPos: %zd bytes written\n", bytesWritten);
 
@@ -219,6 +211,27 @@ int main() {
     bytesRead = myread(fileMix, readBuf, bytesRequested);
     printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
     printf("Bytes Read %d\n",(int)bytesRead);
+
+    mywrite(fileMix, data4, strlen(data4));
+
+    bytesRequested = 10;
+    bytesRead = myread(fileMix, readBuf, bytesRequested);
+    printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
+
+    bytesRequested = 23;
+    bytesRead = myread(fileMix, readBuf, bytesRequested);
+    printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
+
+    mywrite(fileMix, data4, strlen(data4));
+
+    bytesRequested = 28;
+    bytesRead = myread(fileMix, readBuf, bytesRequested);
+    printf("\nRead fileMix: %.*s\n", (int)bytesRead, readBuf);
+    printf("Bytes Read %d\n",(int)bytesRead);
+
+    mywrite(fileMix, data4, strlen(data4));
 
     if(myclose(fileMix) == -1) {
         return -1;
